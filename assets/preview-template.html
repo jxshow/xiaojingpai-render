@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="鲸选AI公众号排版预览：字节绿、AGI绿、杂志绿与Pro蓝，品牌渐变及纯色稳妥导出。">
+<title>{{TITLE}}</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8faf9;color:#1d2129;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}header{max-width:1000px;margin:32px auto 20px;padding:0 20px}h1{font-size:24px;line-height:1.5;margin:0 0 8px}header p{font-size:14px;color:#667085;line-height:1.65;margin:0}nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 12px}button{font:inherit;font-size:14px;line-height:1.5;padding:8px 12px;border:1px solid #e5e7eb;border-radius:4px;background:#fff;color:#1d2129;cursor:pointer}button:hover{background:#eef8f0}button:focus-visible{outline:3px solid #2ea250;outline-offset:2px}button:disabled{opacity:.65;cursor:wait}button.primary{background:#176b39;color:#fff;border-color:#176b39}.primary:hover{background:#101611}#status{min-height:24px;color:#176b39;font-size:14px;line-height:1.65}#notice{max-width:720px;margin:0 auto 16px;padding:12px 16px;border:1px solid #e5e7eb;background:#fff;font-size:14px;line-height:1.65;overflow-wrap:anywhere}#notice[hidden]{display:none}main{max-width:720px;padding:24px;margin:0 auto 32px;background:#fff;border:1px solid #e5e7eb}footer{max-width:720px;margin:0 auto 32px;padding:0 16px;color:#667085;font-size:12px;line-height:1.65}.prompt-tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}.scroll-prompts .prompt-body{max-height:340px;overflow:auto}.prompt-body:focus-visible{outline:2px solid #2ea250;outline-offset:2px}@media(max-width:600px){header{margin:20px auto 16px;padding:0 16px}main{border-left:0;border-right:0;padding:20px 16px}#notice{margin:0 16px 16px}h1{font-size:20px}}
+</style>
+<style>
+.prompt-body:focus-visible{outline-color:#2ea250}label.mode{display:flex;align-items:center;gap:8px;font-size:14px}select{font:inherit;font-size:14px;background:#fff;color:#1d2129;border:1px solid #e5e7eb;border-radius:4px;padding:8px;max-width:100%}select:focus-visible{outline:3px solid #2ea250;outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1>鲸选AI · 公众号排版</h1><p id="theme-name"></p><nav aria-label="文章操作"><label class="mode">样式<select id="export-mode"><option value="design">品牌渐变版</option><option value="compatible">纯色稳妥版</option></select></label><button class="primary" id="copy">复制全文到公众号</button><button id="scroll" aria-pressed="false">长提示词：完整展开</button><button id="select">手动选择正文</button></nav><p id="status" role="status" aria-live="polite">复制当前所见样式；正文重点无底线，提示词完整保留。</p></header>
+<aside id="notice" hidden></aside>
+<main id="article" aria-label="文章预览"><!--ARTICLE--></main>
+<footer>本地预览不代表公众号保存已通过。粘贴后请保存草稿、重新打开，并在手机预览确认图片与样式。</footer>
+<script>
+'use strict';
+const payload = /*PAYLOAD*/null;
+const article = document.getElementById('article');
+const status = document.getElementById('status');
+const copyButton = document.getElementById('copy');
+let activeHtml = payload.html;
+document.getElementById('theme-name').textContent = payload.theme + ' · ' + payload.title;
+const messages = [...payload.report.blockers, ...payload.report.warnings];
+if (messages.length) {
+  const notice = document.getElementById('notice'); notice.hidden = false;
+  notice.textContent = '发布前检查：' + messages.join('；');
+}
+function selectArticle() {
+  const selection = window.getSelection(); const range = document.createRange();
+  range.selectNodeContents(article); selection.removeAllRanges(); selection.addRange(range);
+}
+function legacyCopy(html, text) {
+  let applied = false;
+  const listener = (event) => {
+    if (!event.clipboardData) return;
+    event.preventDefault(); event.clipboardData.setData('text/plain', text);
+    if (html !== null) event.clipboardData.setData('text/html', html);
+    applied = true;
+  };
+  document.addEventListener('copy', listener);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } finally { document.removeEventListener('copy', listener); }
+  return ok && applied;
+}
+async function copyContent(html, text) {
+  if (legacyCopy(html, text)) return;
+  if (html !== null && navigator.clipboard?.write && window.ClipboardItem) {
+    await navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type:'text/html'}), 'text/plain': new Blob([text], {type:'text/plain'})})]);
+    return;
+  }
+  if (html === null && navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return; }
+  throw new Error('剪贴板不可用');
+}
+copyButton.addEventListener('click', async () => {
+  copyButton.disabled = true; status.textContent = '正在复制…';
+  try { await copyContent(activeHtml, payload.text); status.textContent = '已复制全文（' + (document.getElementById('export-mode').value === 'compatible' ? '纯色稳妥版' : '品牌渐变版') + '）。请到公众号粘贴并保存检查。'; }
+  catch { selectArticle(); status.textContent = '自动复制失败，已选中正文，请按 Ctrl+C（Mac：⌘C）。'; }
+  finally { copyButton.disabled = false; }
+});
+document.getElementById('select').addEventListener('click', () => { selectArticle(); status.textContent = '已选中正文，请按 Ctrl+C（Mac：⌘C）。'; });
+document.getElementById('scroll').addEventListener('click', (event) => {
+  const active = article.classList.toggle('scroll-prompts');
+  event.currentTarget.setAttribute('aria-pressed', String(active));
+  event.currentTarget.textContent = active ? '长提示词：预览内滚动' : '长提示词：完整展开';
+});
+function mountArticle(html) {
+article.innerHTML = html;
+const cards = [...article.querySelectorAll('section[style*="border:1px dashed"]')].filter((card) => card.lastElementChild?.style.whiteSpace === 'pre-wrap');
+cards.forEach((card, index) => {
+  const prompt = payload.prompts[index];
+  const body = card.lastElementChild; body.classList.add('prompt-body'); body.tabIndex = 0;
+  body.setAttribute('aria-label', prompt.title);
+  const tools = document.createElement('div'); tools.className = 'prompt-tools';
+  const button = document.createElement('button'); button.textContent = '只复制这段提示词';
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try { await copyContent(null, prompt.text); status.textContent = '已复制原始提示词，空格与换行保留。'; }
+    catch { const range = document.createRange(); range.selectNodeContents(body); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); status.textContent = '自动复制失败，已选中提示词，请按 Ctrl+C（Mac：⌘C）。'; }
+    finally { button.disabled = false; }
+  });
+  tools.appendChild(button); card.before(tools);
+});
+}
+mountArticle(activeHtml);
+document.getElementById('export-mode').addEventListener('change', (event) => {
+  activeHtml = event.currentTarget.value === 'compatible' ? (payload.compatHtml ?? payload.html) : payload.html;
+  mountArticle(activeHtml);
+  status.textContent = event.currentTarget.value === 'compatible' ? '正在预览纯色稳妥版；文字、提示词和布局不变。' : '正在预览品牌渐变版；复制后仍需在公众号保存检查。';
+});
+// Native Ctrl+C must also exclude preview-only controls, but respect explicit partial selections.
+document.addEventListener('copy', (event) => {
+  const selected = window.getSelection();
+  const wholeArticle = document.createRange(); wholeArticle.selectNodeContents(article);
+  const selectedRange = selected?.rangeCount ? selected.getRangeAt(0) : null;
+  const isWholeArticle = selectedRange && selectedRange.compareBoundaryPoints(Range.START_TO_START, wholeArticle) === 0 && selectedRange.compareBoundaryPoints(Range.END_TO_END, wholeArticle) === 0;
+  if (!event.defaultPrevented && isWholeArticle && event.clipboardData) {
+    event.preventDefault(); event.clipboardData.setData('text/html', activeHtml); event.clipboardData.setData('text/plain', payload.text);
+  }
+});
+</script>
+</body>
+</html>

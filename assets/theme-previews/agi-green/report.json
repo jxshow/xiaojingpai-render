@@ -1,0 +1,13 @@
+{
+  "theme": "agi-green",
+  "profile": "design",
+  "textGradient": "steps",
+  "blocks": 16,
+  "quotes": 1,
+  "prompts": 1,
+  "localExportChecksPassed": true,
+  "wechatVerified": false,
+  "blockers": [],
+  "warnings": [],
+  "note": "结构校验与浏览器预览不能替代公众号粘贴、保存和手机预览实测。"
+}
