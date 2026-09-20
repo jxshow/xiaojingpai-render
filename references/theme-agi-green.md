@@ -8,14 +8,17 @@
 
 ## 组件与骨架
 
-左对齐黑色H1 → 开场段落 → 栈式大编号章节（48px 绿色编号 / 可选英文标签 / 20px 黑粗标题）→ 正文/列表/图片 → 浅绿说明/引用 → 提示词 → 鲸选AI署名。
+左对齐黑色H1 → 开场段落 → 栈式大编号章节（48px 绿色编号 / 可选英文标签 / 20px 黑粗标题 / 1px 灰色收尾横线）→ 正文/列表/图片 → 浅绿说明/引用 → 提示词 → 鲸选AI署名。
 
-H2 的栈式结构（`components.h2NumberSize` 48px、`h2LabelSize` 10px、`h2SectionTop` 56px、`h2SectionBottom` 32px、`h2LabelGap` 5px）：
+H2 的栈式结构（`components.h2NumberSize` 48px、`h2LabelSize` 10px、`h2SectionTop` 56px、`h2SectionBottom` 32px、`h2LabelGap` 5px、`h2RuleWidth` 1px、`h2RuleGap` 10、`h2RuleOpacity` 0.76）：
 
-- 编号：48px / 900 字重 / 主色 / `line-height:1` / `letter-spacing:-2px`，单独一行，两位补零。
-- 英文标签：可选，10px / 500 字重 / #a1a1aa / `letter-spacing:3px`，在编号与标题之间。原文给出 `label` 才输出，不自动补造。
+- 编号：48px / 900 字重 / 主色 / `line-height:1` / `letter-spacing:-2px` / **斜体**（`h2NumberStyle`），单独一行，两位补零。
+- 英文标签：可选，10px / 500 字重 / #a1a1aa / 斜体 / `letter-spacing:1px`（`h2LabelTracking`），在编号与标题之间。原文给出 `label` 才输出，不自动补造。
 - 标题：20px / 800 字重 / #1d2129 / `letter-spacing:0.5px` / `line-height:1.4`，紧接标签下方。
+- **收尾横线**：标题下方 1px 通栏浅灰（`colors.h2Rule` #d7d8d2、`opacity:0.76`、距标题 `h2RuleGap` 10px），给栈式标题一个视觉收口。`h2RuleWidth` 设为空字符串即可关掉。
 - 章节留白比其余主题更宽（前 56px、后 32px），用来承托大编号；正文段落不受影响。
+
+> 收尾横线是 **AGI绿专属**（仅 `layout:editorial` 生效），另外三套主题不加，避免视觉语言打架。
 
 H3黑粗字加2px绿底线；mark渐变字色、没有底线；普通strong保留黑色加粗；`underline` 给短关键词加2px绿底线（黑粗字，可叠加 strong，token `components.underlineWidth`/`underlineOffset`）。
 提示词改成浅绿虚线框，不保留紫色色号。不复制WaytoAGI标识、头像、原创声明及分页空白。

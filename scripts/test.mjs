@@ -45,7 +45,9 @@ check('AGI green stacks a 48px number over an optional English label and title',
     { type: 'heading', level: 3, text: '小标题' }
   ], { theme: 'agi-green' }));
   assert.equal(result.html.split('font-size:48px;font-weight:900;color:#2ea250;line-height:1;letter-spacing:-2px').length - 1, 2);
-  assert.ok(result.html.includes('font-size:10px;color:#a1a1aa;font-weight:500;letter-spacing:3px'));
+  assert.ok(result.html.includes('font-size:10px;color:#a1a1aa;font-weight:500;letter-spacing:1px'));
+  // 标题收尾横线：每个 H2 一条，1px 浅灰、不透明度 0.76
+  assert.equal(result.html.split('height:1px;background-color:#d7d8d2;opacity:0.76').length - 1, 2);
   assert.ok(result.html.includes('>TRIPO</span>'));
   assert.ok(result.html.includes('font-weight:800;color:#1d2129;letter-spacing:0.5px'));
   assert.ok(result.text.startsWith('01 高效出模'));
@@ -58,10 +60,26 @@ check('AGI green stacks a 48px number over an optional English label and title',
   ]) assert.throws(() => renderArticle(bad));
   const magazine = renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'magazine-green' }));
   assert.ok(magazine.html.includes('margin-right:8px')); assert.ok(!magazine.html.includes('font-size:48px'));
+  // 横线是 AGI绿 专属：其他三套主题不该出现
+  assert.ok(!magazine.html.includes('background-color:#d7d8d2'));
+  assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'byte-green' })).html.includes('background-color:#d7d8d2'));
+  assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'pro-blue' })).html.includes('background-color:#d7d8d2'));
 });
 check('H3 has actual solid underline and no forced large background', () => {
   const result = renderArticle(base([{ type: 'heading', level: 3, text: 'a、GLM-5.3 flash' }]));
   assert.ok(result.html.includes('border-bottom:2px solid #2ea250')); assert.ok(!result.html.includes('gradient'));
+});
+check('正文配图统一加圆角与极淡投影，且不影响其他元素', () => {
+  const result = renderArticle(base([
+    { type: 'image', src: 'https://example.com/a.png', alt: '示意图', caption: '图注' }
+  ], { theme: 'agi-green' }));
+  assert.ok(result.html.includes('border-radius:10px'));
+  assert.ok(result.html.includes('box-shadow:0 3px 12px rgba(20,24,31,0.07)'));
+  // 四套主题都要有（这是全局视觉规则，不是 AGI绿 专属）
+  for (const t of ['byte-green', 'magazine-green', 'pro-blue']) {
+    const r = renderArticle(base([{ type: 'image', src: 'https://example.com/a.png', alt: '图' }], { theme: t }));
+    assert.ok(r.html.includes('box-shadow:0 3px 12px rgba(20,24,31,0.07)'), t + ' 缺少配图投影');
+  }
 });
 check('Image retains natural height and flags local media', () => {
   const result = renderArticle(base([{ type: 'image', src: 'local.png', alt: '示例图' }]), () => 'media/a.png');

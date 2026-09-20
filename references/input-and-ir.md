@@ -38,7 +38,7 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | prompt | title可省略, text | 原始纯文本提示词；空格换行原样保留 |
 | code | language可省略, text | 原始纯文本代码 |
 | list | ordered可省略, items:字符串或runs数组 | 有序/无序列表 |
-| image | src, alt, caption可省略 | HTTPS 或本地图片路径；本地仅预览可用 |
+| image | src, alt, caption可省略 | HTTPS 或本地图片路径；本地仅预览可用。正文配图统一带 10px 圆角 + `0 3px 12px rgba(20,24,31,0.07)` 极淡投影（`components.figure*`），四套主题一致，无需在输入里指定 |
 | table | headers:字符串数组, rows:字符串二维数组 | 每行同列数；仅真实表格 |
 | divider | 无 | 简单分隔线 |
 | cover | title必填；kicker,date,accent,subtitle,footer可省略 | 杂志式封面，accent为重点副句，footer为品牌条 |

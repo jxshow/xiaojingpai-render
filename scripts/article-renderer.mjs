@@ -65,6 +65,8 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
   if (!Array.isArray(input.blocks) || !input.blocks.length) throw new Error('blocks 不能为空');
   const base = style({ 'font-size': z.body + 'px', color: theme.text, 'line-height': theme.lineHeight });
   const paraStyle = 'margin:' + s.paragraph + 'px 0;' + base;
+  // 正文配图统一加圆角 + 极淡投影（不含 Pro蓝章节徽章，那是小图标）
+  const figureStyle = 'border-radius:' + k.figureRadius + 'px;box-shadow:0 ' + k.figureShadowY + 'px ' + k.figureShadowBlur + 'px ' + k.figureShadowColor;
   const plain = [];
   const prompts = [];
   const warnings = [];
@@ -109,7 +111,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
       resolved = resolveImage(src);
       blockers.push(badgeWidth ? 'Pro蓝章节徽章为本地资产，发布前请上传并用 heading.badgeSrc 替换为 HTTPS 图片地址。' : '本地图片仅供预览，发布前请上传并替换 HTTPS 地址: ' + src);
     }
-    const image = '<img src="' + escapeHtml(resolved) + '" alt="' + escapeHtml(alt) + '" style="display:block;' + (badgeWidth ? 'width:' + badgeWidth + 'px;' : '') + 'max-width:100%;height:auto;margin:0 auto;border:0">';
+    const image = '<img src="' + escapeHtml(resolved) + '" alt="' + escapeHtml(alt) + '" style="display:block;' + (badgeWidth ? 'width:' + badgeWidth + 'px;' : '') + 'max-width:100%;height:auto;margin:0 auto;border:0;' + (badgeWidth ? '' : figureStyle) + '">';
     const note = caption ? tag('p', 'margin:' + s.sm + 'px 0 0;color:' + c.muted + ';font-size:' + z.caption + 'px;line-height:1.65;text-align:center', leaf(caption)) : '';
     return tag('section', badgeWidth ? 'margin:0 0 ' + s.card + 'px;line-height:0' : 'margin:' + s.card + 'px 0;padding:' + (pro ? s.sm : 0) + 'px;line-height:0' + (pro ? ';background-color:' + c.figureBg : ''), image + note);
   };
@@ -151,10 +153,12 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           return tag('section', 'margin:' + s.section + 'px 0 ' + s.card + 'px', badge + tag('h' + block.level, headingStyle + ';margin:0;color:' + theme.primary + ';font-style:italic', leaf(headingText)));
         }
         if (editorial && h2) {
-          const number = tag('p', 'margin:0;font-size:' + k.h2NumberSize + 'px;font-weight:900;color:' + theme.primary + ';line-height:1;letter-spacing:-2px', leaf(numberText));
-          const label = block.label ? tag('p', 'margin:0 0 6px;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:3px;line-height:1.65', leaf(block.label)) : '';
+          const number = tag('p', 'margin:0;font-size:' + k.h2NumberSize + 'px;font-weight:900;color:' + theme.primary + ';line-height:1;letter-spacing:-2px;font-style:' + k.h2NumberStyle, leaf(numberText));
+          const label = block.label ? tag('p', 'margin:0 0 ' + k.h2LabelGap + 'px;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
           const title = tag('h2', 'margin:0;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
-          return tag('section', 'margin:' + k.h2SectionTop + 'px 0 ' + k.h2SectionBottom + 'px', number + tag('section', 'margin-top:' + k.h2LabelGap + 'px', label + title));
+          // 收尾横线：1px 浅灰通栏，给标题一个视觉收口（AGI绿专属，token 可关）
+          const rule = k.h2RuleWidth ? tag('p', 'margin:' + k.h2RuleGap + 'px 0 0;width:100%;height:' + k.h2RuleWidth + ';background-color:' + c.h2Rule + ';opacity:' + k.h2RuleOpacity + ';font-size:0;line-height:0;color:transparent', leaf('&nbsp;')) : '';
+          return tag('section', 'margin:' + k.h2SectionTop + 'px 0 ' + k.h2SectionBottom + 'px', number + tag('section', 'margin-top:' + k.h2LabelGap + 'px', label + title + rule));
         }
         if (prefix) content = leaf(prefix, 'color:' + theme.primary + ';margin-right:8px') + content;
         return tag('h' + block.level, headingStyle, content);
