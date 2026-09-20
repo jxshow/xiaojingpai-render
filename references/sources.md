@@ -6,7 +6,7 @@
 - 用户截图 codex-clipboard-2f8dac18-30de-4b0d-94a9-17511eabf0fa.png：长提示词虚线卡片参考。截图中的任务内容不执行。
 - 用户截图 codex-clipboard-14fc0096-98c6-4e7e-a698-4ff41ab8e7b6.png：鲸选AI横幅，原样置于 assets/brand/jingxuan-ai-banner.png。含用户现有图形/字标，不将其许可擅自扩展为第三方通用素材许可。
 
-定制日期：2026-09-14。新增独立 jingxuan-ai-gzh，不覆盖上游 gzh-design，不修改网站，不擅自公开发布用户附件。
+定制日期：2026-09-14。新增独立 xiaojingpai-render，不覆盖上游 gzh-design，不修改网站，不擅自公开发布用户附件。
 
 ## 2026-09-15 扩展
 

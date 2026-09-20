@@ -45,7 +45,9 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | toc | items:[{title,summary?}], title可省略 | 导读卡自然换行，不包含虚假跳转链接 |
 | summary | text必填, eyebrow可省略 | 杂志一句话导读；与prompt结构不同 |
 
-runs 是 [{text, strong?, em?, mark?, href?}]；布尔样式缺省 false，href 仅 HTTPS/HTTP；纯文本段落可把整个内容作为一个 run。所有 text 自动 HTML 转义，绝不透传 raw HTML。普通换行显示为 br；代码/prompt 使用 pre-wrap 保留原始文本。
+runs 是 [{text, strong?, em?, mark?, underline?, href?}]；布尔样式缺省 false，href 仅 HTTPS/HTTP；纯文本段落可把整个内容作为一个 run。所有 text 自动 HTML 转义，绝不透传 raw HTML。普通换行显示为 br；代码/prompt 使用 pre-wrap 保留原始文本。
+
+`strong` = 黑色加粗（整句结论）；`mark` = 主题渐变字色、无底线；`underline` = 2px 主题色下划线，用于短关键词，**可与 strong 叠加**。H3 的黑粗字自带底线，不要再加 `underline`。
 绿色主题的原有加粗短关键词（Markdown **词语** 或 Word 局部加粗）映射 mark，体现本轮指定的渐变重点风格；整句加粗或明确要求保留黑粗字则 strong。Pro蓝原有加粗默认 strong。不因为要展示渐变就补造新的重点、删除文字或改变强调范围。
 图片 src 缺失或无效时报错；未知本地路径报错。HTTPS 地址只做格式检查，不表示来源允许外链或微信已经上传成功。
 
