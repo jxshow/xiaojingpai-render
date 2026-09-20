@@ -1,6 +1,6 @@
 ---
 name: xiaojingpai-render
-description: "为鲸选AI制作公众号排版：字节渐变绿、AGI绿、杂志绿、鲸选Pro蓝与完整提示词卡。将Markdown、Word、PDF或文本转为保真HTML和可复制预览，支持渐变与纯色两版。适用于鲸选AI文章、AI实测、教程和提示词分享；不代替后台发布或网站部署。"
+description: "小鲸排 Skill · 排版引擎（xiaojingpai-render）：为鲸选AI制作公众号排版：字节渐变绿、AGI绿、杂志绿、鲸选Pro蓝与完整提示词卡。将Markdown、Word、PDF或文本转为保真HTML和可复制预览，支持渐变与纯色两版。适用于鲸选AI文章、AI实测、教程和提示词分享；不代替后台发布或网站部署。"
 ---
 
 # 鲸选AI · 公众号排版
