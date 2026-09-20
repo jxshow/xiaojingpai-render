@@ -51,6 +51,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
   const theme = tokens.themes[themeId];
   const byte = theme.layout === 'byte';
   const pro = theme.layout === 'pro';
+  const editorial = theme.layout === 'editorial';
   const safe = profile === 'compatible';
   const requestedGradient = input.textGradient ?? 'steps';
   if (!['steps', 'continuous', 'solid'].includes(requestedGradient)) throw new Error('textGradient 仅支持 steps/continuous/solid');
@@ -76,7 +77,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
     if (!Array.isArray(runs) || !runs.length) throw new Error('runs 必须是非空数组');
     let text = '';
     const html = runs.map((run) => {
-      fields(run, ['text', 'strong', 'em', 'mark', 'href'], 'run');
+      fields(run, ['text', 'strong', 'em', 'mark', 'href', 'underline'], 'run');
       requiredText(run.text, 'run.text', true);
       text += run.text;
       const styles = {};
@@ -84,6 +85,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
       const mark = boolean(run.mark, 'mark', false);
       if (strong && !mark) { styles['font-weight'] = '700'; styles.color = c.heading; }
       if (boolean(run.em, 'em', false)) styles['font-style'] = 'italic';
+      if (boolean(run.underline, 'underline', false)) { styles['border-bottom'] = k.underlineWidth + ' solid ' + theme.primary; styles['padding-bottom'] = k.underlineOffset + 'px'; }
       let result = mark ? emphasis(run.text, style(styles)) : leaf(run.text, style(styles));
       if (run.href !== undefined) result = tag('a', 'color:' + theme.primary + ';text-decoration:underline', result, ' href="' + escapeHtml(webUrl(run.href, 'href')) + '"');
       return result;
@@ -120,19 +122,26 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         plain.push(part.text); return tag('p', paraStyle, part.html);
       }
       case 'heading': {
-        fields(block, ['type', 'level', 'text', 'badgeSrc'], 'heading'); requiredText(block.text, 'heading.text');
+        fields(block, ['type', 'level', 'text', 'badgeSrc', 'label'], 'heading'); requiredText(block.text, 'heading.text');
         if (block.badgeSrc !== undefined) { requiredText(block.badgeSrc, 'heading.badgeSrc'); if (!(pro && block.level === 2)) throw new Error('badgeSrc 仅用于Pro蓝二级标题'); }
+        if (block.label !== undefined) { requiredText(block.label, 'heading.label'); if (!(editorial && block.level === 2)) throw new Error('label 仅用于AGI绿二级标题的英文标签'); }
         if (![2, 3].includes(block.level)) throw new Error('heading.level 仅支持 2 或 3');
         const h2 = block.level === 2;
-        let prefix = ''; let headingText = block.text; let plainHeading = block.text;
+        let prefix = ''; let headingText = block.text; let plainHeading = block.text; let numberText = '';
         if (h2) {
           const numbered = block.text.match(/^\s*(\d{1,3})(?:[.、．:：)）\s]|(?=[\u3400-\u9fff]))/);
-          const existing = numbered || /^\s*(?:[一二三四五六七八九十百]+[、.．]|第[一二三四五六七八九十百\d]+[章节部分])/.test(block.text);
+          const cnNumber = numbered ? null : block.text.match(/^\s*((?:[一二三四五六七八九十百]+[、.．])|(?:第[一二三四五六七八九十百\d]+[章节部分]))/);
+          const existing = numbered || cnNumber;
           sectionNumber = numbered ? Number(numbered[1]) : sectionNumber + 1;
           if (!byte && !existing) { prefix = pro ? String(sectionNumber) : String(sectionNumber).padStart(2, '0'); plainHeading = prefix + ' ' + block.text; }
           if (!byte && numbered) { prefix = numbered[0]; headingText = block.text.slice(numbered[0].length); }
+          if (editorial) {
+            numberText = cnNumber ? cnNumber[1].replace(/[、.．]$/, '') : String(sectionNumber).padStart(2, '0');
+            if (cnNumber) headingText = block.text.slice(cnNumber[0].length);
+          }
         }
         plain.push(plainHeading);
+        if (editorial && h2 && block.label) plain.push(block.label);
         const headingStyle = style({ margin: (h2 ? s.section : s.block) + 'px 0 ' + (h2 ? s.paragraph : s.sm) + 'px', 'font-size': (h2 ? z.h2 : z.h3) + 'px', 'line-height': 1.6, 'font-weight': 700, color: c.heading, 'text-align': (byte && h2) || pro ? 'center' : 'left' });
         let content = leaf(headingText);
         if (byte && h2) content = leaf(block.text, 'display:inline-block;max-width:100%;box-sizing:border-box;padding:' + s.xs + 'px ' + s.card + 'px;' + gradientBackground('135deg') + ';color:' + c.white + ';border-radius:6px');
@@ -140,6 +149,12 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         if (pro) {
           const badge = renderProBadge({ prefix, number: sectionNumber, src: block.badgeSrc, image: imageBlock, tag, leaf, theme, components: k, space: s, warn: (message) => warnings.push(message) });
           return tag('section', 'margin:' + s.section + 'px 0 ' + s.card + 'px', badge + tag('h' + block.level, headingStyle + ';margin:0;color:' + theme.primary + ';font-style:italic', leaf(headingText)));
+        }
+        if (editorial && h2) {
+          const number = tag('p', 'margin:0;font-size:' + k.h2NumberSize + 'px;font-weight:900;color:' + theme.primary + ';line-height:1;letter-spacing:-2px', leaf(numberText));
+          const label = block.label ? tag('p', 'margin:0 0 6px;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:3px;line-height:1.65', leaf(block.label)) : '';
+          const title = tag('h2', 'margin:0;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
+          return tag('section', 'margin:' + k.h2SectionTop + 'px 0 ' + k.h2SectionBottom + 'px', number + tag('section', 'margin-top:' + k.h2LabelGap + 'px', label + title));
         }
         if (prefix) content = leaf(prefix, 'color:' + theme.primary + ';margin-right:8px') + content;
         return tag('h' + block.level, headingStyle, content);

@@ -38,6 +38,27 @@ check('Original Chinese heading numbers are retained', () => {
   const result = renderArticle(base([{ type: 'heading', level: 2, text: '一、准备' }], { theme: 'agi-purple' }));
   assert.equal(result.text, '一、准备');
 });
+check('AGI green stacks a 48px number over an optional English label and title', () => {
+  const result = renderArticle(base([
+    { type: 'heading', level: 2, text: '高效出模，AI 3D界顶模 Tripo 到底强在哪？', label: 'TRIPO' },
+    { type: 'heading', level: 2, text: '把约束写得具体' },
+    { type: 'heading', level: 3, text: '小标题' }
+  ], { theme: 'agi-green' }));
+  assert.equal(result.html.split('font-size:48px;font-weight:900;color:#2ea250;line-height:1;letter-spacing:-2px').length - 1, 2);
+  assert.ok(result.html.includes('font-size:10px;color:#a1a1aa;font-weight:500;letter-spacing:3px'));
+  assert.ok(result.html.includes('>TRIPO</span>'));
+  assert.ok(result.html.includes('font-weight:800;color:#1d2129;letter-spacing:0.5px'));
+  assert.ok(result.text.startsWith('01 高效出模'));
+  assert.ok(result.text.includes('TRIPO'));
+  assert.ok(result.html.includes('font-size:48px') && result.html.includes('font-weight:900'));
+  for (const bad of [
+    base([{ type: 'heading', level: 2, text: '章节', label: 'X' }], { theme: 'byte-green' }),
+    base([{ type: 'heading', level: 3, text: '小节', label: 'X' }], { theme: 'agi-green' }),
+    base([{ type: 'heading', level: 2, text: '章节', label: '' }], { theme: 'agi-green' })
+  ]) assert.throws(() => renderArticle(bad));
+  const magazine = renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'magazine-green' }));
+  assert.ok(magazine.html.includes('margin-right:8px')); assert.ok(!magazine.html.includes('font-size:48px'));
+});
 check('H3 has actual solid underline and no forced large background', () => {
   const result = renderArticle(base([{ type: 'heading', level: 3, text: 'a、GLM-5.3 flash' }]));
   assert.ok(result.html.includes('border-bottom:2px solid #2ea250')); assert.ok(!result.html.includes('gradient'));
@@ -77,6 +98,21 @@ check('Body emphasis is gradient text, never the H3 underline', () => {
   const result = renderArticle(base([{ type:'paragraph', runs:[{text:'重点文字',mark:true}] }]));
   assert.ok(result.html.includes('color:#2ea250')); assert.ok(result.html.includes('color:#09fc3c')); assert.ok(!/border-bottom|transparent|text-fill/.test(result.html));
   assert.equal(result.text,'重点文字');
+});
+check('Underline emphasis draws a brand rule and composes with bold', () => {
+  const result = renderArticle(base([{ type:'paragraph', runs:[{ text:'关键词', strong:true, underline:true },{ text:'，后面是正文' }] }]));
+  const span = result.html.match(/<span[^>]*>关键词<\/span>/)[0];
+  assert.ok(span.includes('font-weight:700;color:#1d2129'));
+  assert.ok(span.includes('border-bottom:2px solid #2ea250'));
+  assert.ok(span.includes('padding-bottom:2px'));
+  assert.equal(result.text,'关键词，后面是正文');
+  const plain = renderArticle(base([{ type:'paragraph', runs:[{ text:'普通', underline:true }] }]));
+  const plainSpan = plain.html.match(/<span[^>]*>普通<\/span>/)[0];
+  assert.ok(plainSpan.includes('border-bottom:2px solid #2ea250')); assert.ok(!plainSpan.includes('font-weight'));
+  const themed = renderArticle(base([{ type:'paragraph', runs:[{ text:'蓝', underline:true }] }], { theme:'pro-blue' }));
+  assert.ok(themed.html.includes('border-bottom:2px solid #0057ff'));
+  assert.throws(() => renderArticle(base([{ type:'paragraph', runs:[{ text:'x', underline:'yes' }] }])));
+  assert.throws(() => renderArticle(base([{ type:'paragraph', runs:[{ text:'x', underline:true, typo:1 }] }])));
 });
 check('Grapheme gradient keeps emoji, combining marks, and escaped text intact', () => {
   const text = '鲸👩‍💻é<AI>';
