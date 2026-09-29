@@ -38,32 +38,81 @@ check('Original Chinese heading numbers are retained', () => {
   const result = renderArticle(base([{ type: 'heading', level: 2, text: '一、准备' }], { theme: 'agi-purple' }));
   assert.equal(result.text, '一、准备');
 });
-check('AGI green stacks a 48px number over an optional English label and title', () => {
+check('AGI green puts an italic dotted number left of the title column with its own rule', () => {
   const result = renderArticle(base([
     { type: 'heading', level: 2, text: '高效出模，AI 3D界顶模 Tripo 到底强在哪？', label: 'TRIPO' },
     { type: 'heading', level: 2, text: '把约束写得具体' },
     { type: 'heading', level: 3, text: '小标题' }
   ], { theme: 'agi-green' }));
-  assert.equal(result.html.split('font-size:48px;font-weight:900;color:#2ea250;line-height:1;letter-spacing:-2px').length - 1, 2);
-  assert.ok(result.html.includes('font-size:10px;color:#a1a1aa;font-weight:500;letter-spacing:1px'));
-  // 标题收尾横线：每个 H2 一条，1px 浅灰、不透明度 0.76
+  // 编号：斜体 700、56px、带点，位于标题列左侧（flex，不用 float）
+  const numberStyle = 'font-style:italic;font-weight:700;font-size:56px;line-height:1;letter-spacing:0;color:#2ea250';
+  assert.equal(result.html.split(numberStyle).length - 1, 2);
+  assert.ok(result.html.includes('&gt;01.&lt;') || result.html.includes('>01.</span>'));
+  assert.ok(result.html.includes('display:flex;align-items:flex-start'));
+  assert.ok(!result.html.includes('float:'));
+  assert.ok(result.html.includes('width:104px;padding-right:16px'));
+  // 英文标签在标题下方，13px 斜体灰
+  assert.ok(result.html.includes('font-size:13px;color:#a1a1aa;font-weight:500;letter-spacing:0px'));
+  // 标题收尾横线：每个 H2 一条，1px 浅灰、不透明度 0.76，只覆盖标题列（在编号右侧的列内）
   assert.equal(result.html.split('height:1px;background-color:#d7d8d2;opacity:0.76').length - 1, 2);
+  assert.ok(result.html.includes('flex:1;min-width:0;padding:0 0 5px;box-sizing:border-box'));
   assert.ok(result.html.includes('>TRIPO</span>'));
   assert.ok(result.html.includes('font-weight:800;color:#1d2129;letter-spacing:0.5px'));
   assert.ok(result.text.startsWith('01 高效出模'));
   assert.ok(result.text.includes('TRIPO'));
-  assert.ok(result.html.includes('font-size:48px') && result.html.includes('font-weight:900'));
   for (const bad of [
     base([{ type: 'heading', level: 2, text: '章节', label: 'X' }], { theme: 'byte-green' }),
     base([{ type: 'heading', level: 3, text: '小节', label: 'X' }], { theme: 'agi-green' }),
     base([{ type: 'heading', level: 2, text: '章节', label: '' }], { theme: 'agi-green' })
   ]) assert.throws(() => renderArticle(bad));
   const magazine = renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'magazine-green' }));
-  assert.ok(magazine.html.includes('margin-right:8px')); assert.ok(!magazine.html.includes('font-size:48px'));
+  assert.ok(magazine.html.includes('margin-right:8px')); assert.ok(!magazine.html.includes('font-size:56px'));
   // 横线是 AGI绿 专属：其他三套主题不该出现
   assert.ok(!magazine.html.includes('background-color:#d7d8d2'));
   assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'byte-green' })).html.includes('background-color:#d7d8d2'));
   assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'pro-blue' })).html.includes('background-color:#d7d8d2'));
+});
+check('Terminal auto-scrolls only when content is long enough', () => {
+  const short = renderArticle(base([{ type: 'terminal', lines: ['复制链接', '↓', '保存文字稿'] }], { theme: 'agi-green' }));
+  assert.ok(!short.html.includes('overflow-y:auto'), '短内容不该限高');
+  assert.ok(!short.report.warnings.some((warning) => warning.includes('滑动')));
+  const long = renderArticle(base([{ type: 'terminal', lines: Array.from({ length: 20 }, (_, i) => '第 ' + (i + 1) + ' 行较长的内容，用来触发自动限高滑动') }], { theme: 'agi-green' }));
+  assert.ok(long.html.includes('max-height:280px;overflow-y:auto'));
+  assert.ok(long.report.warnings.some((warning) => warning.includes('自动开启限高滑动')));
+  // 显式 false 永不滑动，显式 true 总是滑动
+  assert.ok(!renderArticle(base([{ type: 'terminal', scroll: false, lines: Array.from({ length: 20 }, (_, i) => '第 ' + (i + 1) + ' 行很长的内容也要完整展示出来') }], { theme: 'agi-green' })).html.includes('overflow-y:auto'));
+  assert.ok(renderArticle(base([{ type: 'terminal', scroll: true, lines: ['一行'] }], { theme: 'agi-green' })).html.includes('max-height:280px;overflow-y:auto'));
+  // maxHeight 调大后同样长度不再触发
+  assert.ok(!renderArticle(base([{ type: 'terminal', maxHeight: 600, lines: Array.from({ length: 8 }, (_, i) => '第 ' + (i + 1) + ' 行内容') }], { theme: 'agi-green' })).html.includes('overflow-y:auto'));
+});
+check('Terminal box renders header dots, mono body and optional scroll', () => {
+  const result = renderArticle(base([
+    { type: 'terminal', lines: ['复制链接', '', [{ text: '让 ' }, { text: 'AI', mark: true }, { text: ' 处理' }, { text: '重点', strong: true }]] },
+    { type: 'terminal', title: '安装', tag: 'PROMPT', scroll: true, maxHeight: 200, lines: ['第一行', '第二行'] }
+  ], { theme: 'agi-green' }));
+  // 红绿灯 + 标题栏 + 右侧主题色角标
+  for (const dot of ['#ff5f57', '#febc2e', '#28c840']) assert.ok(result.html.includes('background-color:' + dot));
+  assert.ok(result.html.includes('>terminal</span>'));
+  assert.ok(result.html.includes('font-family:Consolas'));
+  assert.ok(result.html.includes('rgba(46,162,80,0.62)'));
+  // mark → 主题色 600；strong → 黑粗
+  assert.ok(result.html.includes('font-weight:600;color:#2ea250'));
+  assert.ok(result.html.includes('font-weight:700;color:#1d2129'));
+  // 空行保留、不加 float/grid
+  assert.ok(result.html.includes('<br>'));
+  assert.ok(!result.html.includes('float:'));
+  // 滑动版：max-height + overflow-y；不滑动版没有
+  assert.equal(result.html.split('overflow-y:auto').length - 1, 1);
+  assert.ok(result.html.includes('max-height:200px;overflow-y:auto'));
+  assert.ok(result.report.warnings.some((warning) => warning.includes('滑动')));
+  assert.ok(result.text.includes('terminal\n复制链接\n\n让 AI 处理重点'));
+  // 校验失败路径
+  assert.throws(() => renderArticle(base([{ type: 'terminal', lines: [] }])));
+  assert.throws(() => renderArticle(base([{ type: 'terminal', lines: ['x'], maxHeight: 10 }])));
+  assert.throws(() => renderArticle(base([{ type: 'terminal', lines: ['x'], scroll: 'yes' }])));
+  assert.throws(() => renderArticle(base([{ type: 'terminal', lines: [[{ text: 'x', href: 'https://a.com' }]] }])));
+  const compatible = renderArticle(base([{ type: 'terminal', scroll: true, lines: ['一', '二'] }], { theme: 'agi-green' }), undefined, 'compatible');
+  assert.ok(compatible.html.includes('max-height:280px;overflow-y:auto'));
 });
 check('H3 has actual solid underline and no forced large background', () => {
   const result = renderArticle(base([{ type: 'heading', level: 3, text: 'a、GLM-5.3 flash' }]));

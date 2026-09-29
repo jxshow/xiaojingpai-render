@@ -37,6 +37,7 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | callout | title可省略, paragraphs | 说明卡，原文事实不补写 |
 | prompt | title可省略, text | 原始纯文本提示词；空格换行原样保留 |
 | code | language可省略, text | 原始纯文本代码 |
+| terminal | title/tag/scroll/maxHeight可省略, lines必填 | macOS 终端风引用框（四套主题通用）；lines 是字符串或 runs 数组的数组，run 仅支持 text/strong/mark；空字符串行保留空行；**scroll 省略时按内容估算高度自动决定是否限高滑动**（超过 maxHeight 默认280即滑动），显式 true/false 可强制；手机端需实测 |
 | list | ordered可省略, items:字符串或runs数组 | 有序/无序列表 |
 | image | src, alt, caption可省略 | HTTPS 或本地图片路径；本地仅预览可用。正文配图统一带 10px 圆角 + `0 3px 12px rgba(20,24,31,0.07)` 极淡投影（`components.figure*`），四套主题一致，无需在输入里指定 |
 | table | headers:字符串数组, rows:字符串二维数组 | 每行同列数；仅真实表格 |

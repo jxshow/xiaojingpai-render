@@ -31,6 +31,19 @@ const webUrl = (value, label, httpsOnly = false) => {
   return value;
 };
 
+const hexToRgba = (hex, alpha) => 'rgba(' + [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)).join(',') + ',' + alpha + ')';
+// 估算终端框正文高度：按手机正文宽度估算每行的视觉宽度（中日韩全角 ~13px，其余 ~7.2px），
+// 再按 21px 行高折算行数，加上下 16px padding。用于 scroll 未显式指定时自动决定是否限高滑动。
+const estimateTerminalHeight = (parts, contentWidth = 339) => {
+  let height = 32;
+  for (const part of parts) {
+    let width = 0;
+    for (const char of part.text) width += /[\u2e80-\u9fff\uff00-\uffef\u3000-\u303f]/.test(char) ? 13 : 7.2;
+    height += Math.max(1, Math.ceil(width / contentWidth)) * 21;
+  }
+  return height;
+};
+
 export function gradientText(text, start, end, mode, extraStyle = '') {
   if (mode === 'solid') return leaf(text, extraStyle + ';color:' + start);
   if (mode === 'continuous') return leaf(text, extraStyle + ';color:' + start + ';background-color:' + start + ';background-image:linear-gradient(90deg,' + start + ',' + end + ');background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent');
@@ -153,12 +166,16 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           return tag('section', 'margin:' + s.section + 'px 0 ' + s.card + 'px', badge + tag('h' + block.level, headingStyle + ';margin:0;color:' + theme.primary + ';font-style:italic', leaf(headingText)));
         }
         if (editorial && h2) {
-          const number = tag('p', 'margin:0;font-size:' + k.h2NumberSize + 'px;font-weight:900;color:' + theme.primary + ';line-height:1;letter-spacing:-2px;font-style:' + k.h2NumberStyle, leaf(numberText));
-          const label = block.label ? tag('p', 'margin:0 0 ' + k.h2LabelGap + 'px;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
-          const title = tag('h2', 'margin:0;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
-          // 收尾横线：1px 浅灰通栏，给标题一个视觉收口（AGI绿专属，token 可关）
+          // 横排编号版式：左侧斜体大编号（带点），右列标题/英文标签/收尾横线；
+          // 横线只覆盖标题列，不延伸到编号下方（参考雷一言公众号版式，flex 实现，不用 float）
+          const dot = /^\d+$/.test(numberText) ? '.' : '';
+          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:16px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary + ';text-align:left', leaf(numberText + dot));
+          const title = tag('h2', 'margin:0;padding-top:6px;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
+          const label = block.label ? tag('p', 'margin:' + k.h2LabelGap + 'px 0 0;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
+          // 收尾横线：1px 浅灰，仅在标题列内通栏（AGI绿专属，token 可关）
           const rule = k.h2RuleWidth ? tag('p', 'margin:' + k.h2RuleGap + 'px 0 0;width:100%;height:' + k.h2RuleWidth + ';background-color:' + c.h2Rule + ';opacity:' + k.h2RuleOpacity + ';font-size:0;line-height:0;color:transparent', leaf('&nbsp;')) : '';
-          return tag('section', 'margin:' + k.h2SectionTop + 'px 0 ' + k.h2SectionBottom + 'px', number + tag('section', 'margin-top:' + k.h2LabelGap + 'px', label + title + rule));
+          const column = tag('section', 'flex:1;min-width:0;padding:0 0 5px;box-sizing:border-box', title + label + rule);
+          return tag('section', 'margin:' + k.h2SectionTop + 'px 0 ' + k.h2SectionBottom + 'px', tag('section', 'display:flex;align-items:flex-start', number + column));
         }
         if (prefix) content = leaf(prefix, 'color:' + theme.primary + ';margin-right:8px') + content;
         return tag('h' + block.level, headingStyle, content);
@@ -220,6 +237,48 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         if (isPrompt) prompts.push({ title: label, text: block.text });
         plain.push(label + '\n' + block.text);
         return tag('section', 'margin:' + s.block + 'px 0;border:1px ' + (isPrompt ? 'dashed ' + theme.border : 'solid ' + c.line) + ';border-radius:' + (isPrompt ? k.promptRadius : 4) + 'px;background-color:' + (isPrompt ? theme.promptBg : c.codeBg), head + body);
+      }
+      case 'terminal': {
+        // macOS 终端风引用框：红绿灯标题栏 + 等宽正文；scroll:true 时正文限高可滑动（适合长提示词/长清单）
+        fields(block, ['type', 'title', 'tag', 'scroll', 'maxHeight', 'lines'], 'terminal');
+        if (!Array.isArray(block.lines) || !block.lines.length) throw new Error('terminal.lines 不能为空');
+        const termTitle = block.title === undefined ? 'terminal' : requiredText(block.title, 'terminal.title', true);
+        const termTag = block.tag === undefined ? 'TEXT' : requiredText(block.tag, 'terminal.tag', true);
+        let maxHeight = 280;
+        if (block.maxHeight !== undefined) {
+          if (typeof block.maxHeight !== 'number' || block.maxHeight < 80) throw new Error('terminal.maxHeight 必须是不小于 80 的数字');
+          maxHeight = block.maxHeight;
+        }
+        const termRich = (line) => {
+          if (typeof line === 'string') return { html: line ? leaf(line) : '<br>', text: line };
+          if (!Array.isArray(line) || !line.length) throw new Error('terminal.lines 每行必须是字符串或 runs 数组');
+          let text = '';
+          const html = line.map((run) => {
+            fields(run, ['text', 'strong', 'mark'], 'terminal.run');
+            requiredText(run.text, 'terminal.run.text', true);
+            text += run.text;
+            const styles = {};
+            if (boolean(run.strong, 'terminal.run.strong', false)) { styles['font-weight'] = '700'; styles.color = c.heading; }
+            if (boolean(run.mark, 'terminal.run.mark', false)) { styles['font-weight'] = '600'; styles.color = theme.primary; }
+            return leaf(run.text, style(styles));
+          }).join('');
+          return { html, text };
+        };
+        const parts = block.lines.map(termRich);
+        // scroll 未写就自动判断：估算高度超过 maxHeight 才限高滑动，短内容保持完整展开
+        const estimated = estimateTerminalHeight(parts);
+        const scroll = block.scroll === undefined ? estimated > maxHeight : boolean(block.scroll, 'terminal.scroll', false);
+        const lineHtml = parts.map((part) => tag('section', 'white-space:pre-wrap;word-break:break-word', part.html)).join('');
+        const dots = ['#ff5f57', '#febc2e', '#28c840'].map((color, index) => tag('span', 'display:inline-block;width:10px;height:10px;border-radius:999px;background-color:' + color + (index < 2 ? ';margin-right:7px' : '') + ';vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08)', leaf('&nbsp;'))).join('');
+        const head = tag('section', 'display:flex;align-items:center;height:36px;padding:0 14px;border-bottom:1px solid #ececf0;background-color:#fafafa;box-sizing:border-box',
+          tag('span', 'display:inline-block;flex-shrink:0;font-size:0;line-height:0', dots)
+          + tag('span', 'display:inline-block;flex:1;min-width:0;margin-left:12px;font-size:11px;line-height:36px;letter-spacing:0.1px;color:rgba(27,28,26,0.5);font-family:' + tokens.mono + ';font-weight:600;overflow:hidden;white-space:nowrap', leaf(termTitle))
+          + (termTag ? tag('span', 'display:inline-block;flex-shrink:0;margin-left:12px;font-size:10px;line-height:16px;letter-spacing:1.2px;color:' + hexToRgba(theme.primary, 0.62) + ';font-weight:700', leaf(termTag.toUpperCase())) : ''));
+        const body = tag('section', 'display:block;padding:16px 18px;background-color:' + c.white + ';box-sizing:border-box' + (scroll ? ';max-height:' + maxHeight + 'px;overflow-y:auto' : ''),
+          tag('section', 'color:#3f3d38;font-size:13px;line-height:21px;font-family:' + tokens.mono + ';word-break:break-word', lineHtml));
+        if (scroll) warnings.push('终端框' + (block.scroll === undefined ? '内容较长（估算约 ' + estimated + 'px）已自动开启限高滑动' : '开启限高滑动') + '（max-height:' + maxHeight + 'px + overflow-y:auto），粘贴保存后请在手机端实测滑动是否生效；不想要滑动就显式写 "scroll":false。');
+        plain.push((termTitle ? termTitle + '\n' : '') + parts.map((part) => part.text).join('\n'));
+        return tag('section', 'width:100%;margin:28px 0;border:1px solid #e3e4e8;background-color:' + c.white + ';overflow:hidden;box-shadow:0 12px 30px rgba(31,35,44,0.07);box-sizing:border-box', head + body);
       }
       case 'list': {
         fields(block, ['type', 'ordered', 'items'], 'list');
