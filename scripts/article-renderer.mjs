@@ -169,7 +169,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           // 横排编号版式：左侧斜体大编号（带点），右列标题/英文标签/收尾横线；
           // 横线只覆盖标题列，不延伸到编号下方（参考雷一言公众号版式，flex 实现，不用 float）
           const dot = /^\d+$/.test(numberText) ? '.' : '';
-          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:16px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary + ';text-align:left', leaf(numberText + dot));
+          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:16px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;white-space:nowrap;color:' + theme.primary + ';text-align:left', leaf(numberText + dot));
           const title = tag('h2', 'margin:0;padding-top:6px;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
           const label = block.label ? tag('p', 'margin:' + k.h2LabelGap + 'px 0 0;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
           // 收尾横线：1px 浅灰，仅在标题列内通栏（AGI绿专属，token 可关）

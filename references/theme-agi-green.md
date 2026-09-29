@@ -10,7 +10,7 @@
 
 左对齐黑色H1 → 开场段落 → 横排编号章节（左侧斜体绿编号 + 右列标题/英文标签/1px 收尾横线）→ 正文/列表/图片 → 浅绿说明/引用 → 终端框 → 提示词 → 鲸选AI署名。
 
-H2 的横排结构（2026-09 参考「雷一言」公众号版式重做；`components.h2NumberSize` 56px、`h2NumberWidth` 104px、`h2NumberWeight` 700、`h2LabelSize` 13px、`h2SectionTop` 56px、`h2SectionBottom` 32px、`h2RuleGap` 10、`h2RuleOpacity` 0.76）：
+H2 的横排结构（2026-09 参考「雷一言」公众号版式重做；`components.h2NumberSize` 56px、`h2NumberWidth` 120px、`h2NumberWeight` 700、`h2LabelSize` 13px、`h2SectionTop` 56px、`h2SectionBottom` 32px、`h2RuleGap` 10、`h2RuleOpacity` 0.76）：
 
 - **编号**：左列，斜体 / 700 字重 / 56px / 主色，**数字带点**（`01.`），Inter 系字体，`display:flex` 左右分栏实现（**不用 float**，合规校验禁止 float）。
 - **右列**（`flex:1;min-width:0`）：标题在上（20px / 800 / #1d2129），英文标签在标题下方（13px / 500 / #a1a1aa / 斜体），收尾横线最下。

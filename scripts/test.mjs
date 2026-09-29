@@ -44,13 +44,13 @@ check('AGI green puts an italic dotted number left of the title column with its 
     { type: 'heading', level: 2, text: '把约束写得具体' },
     { type: 'heading', level: 3, text: '小标题' }
   ], { theme: 'agi-green' }));
-  // 编号：斜体 700、56px、带点，位于标题列左侧（flex，不用 float）
-  const numberStyle = 'font-style:italic;font-weight:700;font-size:56px;line-height:1;letter-spacing:0;color:#2ea250';
+  // 编号：斜体 700、56px、带点，位于标题列左侧（flex，不用 float）；nowrap 防止句点在微信回退字体下折行成孤点
+  const numberStyle = 'font-style:italic;font-weight:700;font-size:56px;line-height:1;letter-spacing:0;white-space:nowrap;color:#2ea250';
   assert.equal(result.html.split(numberStyle).length - 1, 2);
   assert.ok(result.html.includes('&gt;01.&lt;') || result.html.includes('>01.</span>'));
   assert.ok(result.html.includes('display:flex;align-items:flex-start'));
   assert.ok(!result.html.includes('float:'));
-  assert.ok(result.html.includes('width:104px;padding-right:16px'));
+  assert.ok(result.html.includes('width:120px;padding-right:16px'));
   // 英文标签在标题下方，13px 斜体灰
   assert.ok(result.html.includes('font-size:13px;color:#a1a1aa;font-weight:500;letter-spacing:0px'));
   // 标题收尾横线：每个 H2 一条，1px 浅灰、不透明度 0.76，只覆盖标题列（在编号右侧的列内）
