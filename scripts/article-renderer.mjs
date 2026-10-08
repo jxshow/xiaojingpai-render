@@ -7,8 +7,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const tokens = JSON.parse(fs.readFileSync(path.join(root, 'assets/tokens.json'), 'utf8'));
 const { colors: c, space: s, size: z, components: k } = tokens;
 export const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+// 微信编辑器会丢弃整条 style，只要 font-family 里出现带引号的字体名（Segoe UI / Helvetica Neue）。
+// 实测 2026-10-08：<span style="...font-family:...&#39;Segoe UI&#39;..."> 存入草稿后 style 变成 ""，
+// 整段版式（斜体绿编号、提示词卡的等宽字号行高）全部丢失。
+// 这里在输出前去掉字体名里的引号——带空格的字体名不加引号 CSS 同样合法，且微信会完整保留。
+export const wechatSafeStyle = (value) => String(value).replace(/font-family:([^;]*)/g, (_m, fonts) => 'font-family:' + fonts.replace(/&#39;|'/g, ''));
 const style = (values) => Object.entries(values).map(([key, value]) => key + ':' + value).join(';');
-const tag = (name, styles, html, attrs = '') => '<' + name + (styles ? ' style="' + escapeHtml(styles) + '"' : '') + attrs + '>' + html + '</' + name + '>';
+const tag = (name, styles, html, attrs = '') => '<' + name + (styles ? ' style="' + escapeHtml(wechatSafeStyle(styles)) + '"' : '') + attrs + '>' + html + '</' + name + '>';
 const leaf = (text, styles = '', breaks = true) => tag('span', styles, breaks ? escapeHtml(text).replace(/\r\n|\n|\r/g, '<br>') : escapeHtml(text), ' leaf=""');
 const requiredText = (value, label, allowEmpty = false) => {
   if (typeof value !== 'string' || (!allowEmpty && !value.trim())) throw new Error(label + ' 必须是' + (allowEmpty ? '字符串' : '非空字符串'));
