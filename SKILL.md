@@ -30,6 +30,7 @@ description: "小鲸排 Skill · 排版引擎（xiaojingpai-render）：为鲸�
 - 不自动把所有短行当标题；没有明确层级时保留段落。需要大幅推断结构或 OCR 不确定才询问关键问题。
 - 鲸选AI署名默认只出现一次，正文是他人原文时不冒署名或抹除作者：显式设置 signature:false 或保留来源说明。PDF这里只提取风格，不复制其原创标记、WaytoAGI头像、粉丝数字和推广信息。
 - 图片不得保留屏幕高度、固定高度、懒加载占位 padding 或多余空 p/br；本地预览不是微信服务器上的图片。
+- **preview.html 里的本地图片自动转 base64 内联**（2026-10-10 起），所以「复制全文到公众号」能带走图片；已上传的 mmbiz HTTPS 地址原样保留。单张图很大或张数很多时先压到宽 1080 左右，否则剪贴板 HTML 过大。详见 references/export-contract.md。
 
 ## 路由
 

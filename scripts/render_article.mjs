@@ -5,10 +5,27 @@ import { renderArticle, escapeHtml } from './article-renderer.mjs';
 export { renderArticle, tokens, gradientText } from './article-renderer.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export function wrapPreview(result) {
+export function wrapPreview(result, outDir) {
   const template = fs.readFileSync(path.join(root, 'assets/preview-template.html'), 'utf8');
-  const payload = JSON.stringify(result).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-  return template.replaceAll('{{TITLE}}', escapeHtml(result.title)).replace('<!--ARTICLE-->', result.html).replace('/*PAYLOAD*/null', payload);
+  // 本地图片改写成 data: base64 内联。否则「复制全文到公众号」会丢图：
+  // 公众号编辑器收到 media/xxx.jpg 这类本机相对路径后，会去请求微信服务器取图，必然落空。
+  // 已在 publish 链路里上传成 mmbiz HTTPS 地址的图片不受影响，原样保留。
+  const inlineLocalImages = (html) => {
+    if (!outDir || typeof html !== 'string') return html;
+    return html.replace(/(<img\b[^>]*?\bsrc=")([^"]+)(")/g, (all, pre, src, post) => {
+      if (/^(?:https?:|data:|\/\/)/i.test(src)) return all;
+      const file = path.join(outDir, src);
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return all;
+      const ext = path.extname(file).toLowerCase();
+      const mime = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+      return pre + 'data:' + mime + ';base64,' + fs.readFileSync(file).toString('base64') + post;
+    });
+  };
+  const payloadResult = outDir
+    ? { ...result, html: inlineLocalImages(result.html), compatHtml: inlineLocalImages(result.compatHtml) }
+    : result;
+  const payload = JSON.stringify(payloadResult).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  return template.replaceAll('{{TITLE}}', escapeHtml(result.title)).replace('<!--ARTICLE-->', payloadResult.html).replace('/*PAYLOAD*/null', payload);
 }
 
 export function build(inputPath, outDir) {
@@ -34,7 +51,7 @@ export function build(inputPath, outDir) {
   for (const item of media) { fs.mkdirSync(path.join(outDir, 'media'), { recursive: true }); fs.copyFileSync(item.source, path.join(outDir, item.relative)); }
   fs.writeFileSync(path.join(outDir, 'article.html'), result.html, 'utf8');
   fs.writeFileSync(path.join(outDir, 'article-compatible.html'), result.compatHtml, 'utf8');
-  fs.writeFileSync(path.join(outDir, 'preview.html'), wrapPreview(result), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'preview.html'), wrapPreview(result, outDir), 'utf8');
   fs.writeFileSync(path.join(outDir, 'article.txt'), result.text, 'utf8');
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(result.report, null, 2), 'utf8');
   return result.report;

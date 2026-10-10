@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { renderArticle, wrapPreview, gradientText } from './render_article.mjs';
 
 let tests = 0;
@@ -230,5 +233,22 @@ check('Marked emphasis owns weight and color without duplicate declarations', ()
       assert.equal(new Set(properties).size, properties.length, match[1]);
     }
   }
+});
+check('Preview inlines local images so WeChat paste keeps them', () => {
+  const html = '<p><img src="media/image-1.jpg" alt="图"></p>';
+  const remote = '<p><img src="https://mmbiz.qpic.cn/x.jpg" alt="远端"></p>';
+  const already = '<p><img src="data:image/png;base64,AAA" alt="内联"></p>';
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xjp-inline-'));
+  fs.mkdirSync(path.join(dir, 'media'));
+  fs.writeFileSync(path.join(dir, 'media/image-1.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  const out = wrapPreview({ title: 'T', html, compatHtml: html, text: 'x', report: { blockers: [], warnings: [] }, theme: 'agi-green', prompts: [] }, dir);
+  assert.ok(out.includes('src="data:image/jpeg;base64,'), '本地图片应内联');
+  assert.ok(!out.includes('src="media/image-1.jpg"'), '不应残留本机相对路径');
+  // 已是 https / data 的不能重复处理
+  assert.ok(wrapPreview({ title: 'T', html: remote, text: 'x', report: { blockers: [], warnings: [] }, theme: 'agi-green', prompts: [] }, dir).includes('src="https://mmbiz.qpic.cn/x.jpg"'));
+  assert.ok(wrapPreview({ title: 'T', html: already, text: 'x', report: { blockers: [], warnings: [] }, theme: 'agi-green', prompts: [] }, dir).includes('src="data:image/png;base64,AAA"'));
+  // 不传 outDir 时保持原样（发布链路已传 outDir，这里只验证不炸）
+  assert.ok(wrapPreview({ title: 'T', html, text: 'x', report: { blockers: [], warnings: [] }, theme: 'agi-green', prompts: [] }).includes('src="media/image-1.jpg"'));
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 console.log('ALL ' + tests + ' TESTS PASSED');
