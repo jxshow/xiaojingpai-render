@@ -12,8 +12,10 @@
 
 H2 的横排结构（2026-09 参考「雷一言」公众号版式重做；`components.h2NumberSize` 56px、`h2NumberWidth` 120px、`h2NumberWeight` 700、`h2LabelSize` 13px、`h2SectionTop` 56px、`h2SectionBottom` 32px、`h2RuleGap` 10、`h2RuleOpacity` 0.76）：
 
-- **编号**：左列，斜体 / 700 字重 / 56px / 主色，**数字带点**（`01.`），Inter 系字体，`display:flex` 左右分栏实现（**不用 float**，合规校验禁止 float）。
-- **右列**（`flex:1;min-width:0`）：标题在上（20px / 800 / #1d2129），英文标签在标题下方（13px / 500 / #a1a1aa / 斜体），收尾横线最下。
+- **编号**：左列，斜体 / 700 字重 / 48px / 主色，**数字带点**（`01.`），Inter 系字体，`display:flex` 左右分栏实现（**不用 float**，合规校验禁止 float）。
+- ⚠️ **斜体必须写在承载文字的那层 `<span leaf>` 上，不能只给外层容器**（2026-10-10 用户手机端实测发现）。原实现把 `font-style:italic` 放在外层 span、编号文字放内层 span，微信手机端粘贴时会重置内层的继承样式，导致电脑端预览是斜体、手机端变正体。现在 italic/字重/字号/颜色同时写进内层。
+- 右列**（`flex:1;min-width:0`）**：标题在上（20px / 800 / #1d2129），英文标签在标题下方（13px / 500 / #a1a1aa / 斜体），收尾横线最下。
+- **编号与标题间距**：`h2NumberWidth` 104px + `h2NumberGap` 10px（2026-10-10 从 120px/16px 收窄，标题左缘更靠近编号）。
 - **收尾横线**：1px 浅灰（`colors.h2Rule` #d7d8d2、`opacity:0.76`、距标题 10px），**只覆盖标题列的宽度，不延伸到编号下方**。`h2RuleWidth` 设为空字符串即可关掉。
 - 中文序号（「一、」）保留原样不加点；阿拉伯序号统一补点。
 - 章节留白比其余主题更宽（前 56px、后 32px），用来承托大编号；正文段落不受影响。
