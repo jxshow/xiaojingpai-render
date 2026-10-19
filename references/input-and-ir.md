@@ -40,6 +40,7 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | terminal | title/tag/scroll/maxHeight可省略, lines必填 | macOS 终端风引用框（四套主题通用）；lines 是字符串或 runs 数组的数组，run 仅支持 text/strong/mark；空字符串行保留空行；**scroll 省略时按内容估算高度自动决定是否限高滑动**（超过 maxHeight 默认280即滑动），显式 true/false 可强制；手机端需实测 |
 | list | ordered可省略, items:字符串或runs数组 | 有序/无序列表 |
 | image | src, alt, caption可省略 | HTTPS 或本地图片路径；本地仅预览可用。正文配图统一带 10px 圆角 + `0 3px 12px rgba(20,24,31,0.07)` 极淡投影（`components.figure*`），四套主题一致，无需在输入里指定 |
+| hero | src, alt, caption/author/editor可省略 | 开头头图卡：浅灰底托一张通栏图，图下一行左侧 `caption`、右侧 `作者 | X` / `编辑：X`。通常放 blocks 第一个，紧跟标题 |
 | table | headers:字符串数组, rows:字符串二维数组 | 每行同列数；仅真实表格 |
 | divider | 无 | 简单分隔线 |
 | cover | title必填；kicker,date,accent,subtitle,footer可省略 | 杂志式封面，accent为重点副句，footer为品牌条 |

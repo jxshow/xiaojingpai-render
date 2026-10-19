@@ -117,18 +117,22 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
     const parts = items.map(rich);
     return { html: parts.map((part, index) => tag('p', 'margin:' + (index ? s.sm : 0) + 'px 0 0;' + base, part.html || '<br>')).join(''), text: parts.map((part) => part.text).join('\n\n') };
   };
-  const imageBlock = (src, alt, caption, badgeWidth = 0) => {
-    requiredText(src, 'image.src'); requiredText(alt, 'image.alt');
-    if (caption !== undefined) requiredText(caption, 'image.caption', true);
-    let resolved;
+  // 图片地址解析：HTTPS 直用，本地路径交给 resolveImage（仅预览），其余协议拒绝
+  const resolveImg = (src, label) => {
+    requiredText(src, label);
     if (/^https:\/\//i.test(src)) {
-      webUrl(src, 'image.src', true); resolved = src;
+      webUrl(src, label, true);
       warnings.push('远程图片需要在公众号粘贴、保存后确认可用: ' + src);
-    } else {
-      if (/^[a-z][a-z0-9+.-]*:/i.test(src) && !/^[a-z]:[\\/]/i.test(src)) throw new Error('图片不支持 data/blob/file/HTTP 协议: ' + src);
-      resolved = resolveImage(src);
-      blockers.push(badgeWidth ? 'Pro蓝章节徽章为本地资产，发布前请上传并用 heading.badgeSrc 替换为 HTTPS 图片地址。' : '本地图片仅供预览，发布前请上传并替换 HTTPS 地址: ' + src);
+      return { resolved: src, local: false };
     }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(src) && !/^[a-z]:[\\/]/i.test(src)) throw new Error('图片不支持 data/blob/file/HTTP 协议: ' + src);
+    return { resolved: resolveImage(src), local: true };
+  };
+  const imageBlock = (src, alt, caption, badgeWidth = 0) => {
+    requiredText(alt, 'image.alt');
+    if (caption !== undefined) requiredText(caption, 'image.caption', true);
+    const { resolved, local } = resolveImg(src, 'image.src');
+    if (local) blockers.push(badgeWidth ? 'Pro蓝章节徽章为本地资产，发布前请上传并用 heading.badgeSrc 替换为 HTTPS 图片地址。' : '本地图片仅供预览，发布前请上传并替换 HTTPS 地址: ' + src);
     const image = '<img src="' + escapeHtml(resolved) + '" alt="' + escapeHtml(alt) + '" style="display:block;' + (badgeWidth ? 'width:' + badgeWidth + 'px;' : '') + 'max-width:100%;height:auto;margin:0 auto;border:0;' + (badgeWidth ? '' : figureStyle) + '">';
     const note = caption ? tag('p', 'margin:' + s.sm + 'px 0 0;color:' + c.muted + ';font-size:' + z.caption + 'px;line-height:1.65;text-align:center', leaf(caption)) : '';
     return tag('section', badgeWidth ? 'margin:0 0 ' + s.card + 'px;line-height:0' : 'margin:' + s.card + 'px 0;padding:' + (pro ? s.sm : 0) + 'px;line-height:0' + (pro ? ';background-color:' + c.figureBg : ''), image + note);
@@ -297,6 +301,24 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         plain.push(parts.map((part, i) => (ordered ? (i + 1) + '. ' : '• ') + part.text).join('\n'));
         return tag(ordered ? 'ol' : 'ul', 'margin:' + s.paragraph + 'px 0;padding-left:24px;' + base, parts.map((part) => tag('li', 'margin:8px 0;padding-left:4px', part.html)).join(''));
       }
+      case 'hero': {
+        fields(block, ['type', 'src', 'alt', 'caption', 'author', 'editor'], 'hero');
+        requiredText(block.alt, 'hero.alt');
+        for (const key of ['caption', 'author', 'editor']) if (block[key] !== undefined) requiredText(block[key], 'hero.' + key);
+        const { resolved, local } = resolveImg(block.src, 'hero.src');
+        if (local) blockers.push('头图为本地图片，发布前请上传并替换 HTTPS 地址: ' + block.src);
+        if (!block.caption && !block.author && !block.editor) warnings.push('头图没有图注也没有署名，灰底下方会留一行空白，建议补 caption 或 author。');
+        const meta = 'font-size:' + k.heroMetaSize + 'px;line-height:1.75';
+        const bylineLines = [block.author ? '作者 | ' + block.author : '', block.editor ? '编辑：' + block.editor : ''].filter(Boolean);
+        // 只有一边时独占整行：图注单走左对齐，署名单走右对齐
+        const captionWidth = bylineLines.length ? k.heroCaptionWidth : 100;
+        const caption = block.caption ? tag('span', 'display:inline-block;width:' + captionWidth + '%;vertical-align:top;box-sizing:border-box;padding-right:8px;' + meta + ';color:' + c.muted, leaf(block.caption, meta + ';color:' + c.muted)) : '';
+        const byline = bylineLines.length ? tag('span', 'display:inline-block;width:' + (block.caption ? k.heroBylineWidth : 100) + '%;vertical-align:top;box-sizing:border-box;' + meta + ';color:' + c.labelMuted + ';text-align:right', leaf(bylineLines.join('\n'), meta + ';color:' + c.labelMuted)) : '';
+        const image = '<img src="' + escapeHtml(resolved) + '" alt="' + escapeHtml(block.alt) + '" style="display:block;width:100%;max-width:100%;height:auto;border:0;border-radius:' + k.heroRadius + 'px">';
+        plain.push('[头图：' + block.alt + ']' + (block.caption ? '\n' + block.caption : '') + (bylineLines.length ? '\n' + bylineLines.join('\n') : ''));
+        return tag('section', 'margin:0 0 ' + s.section + 'px;padding:' + k.heroPadding + 'px;background-color:' + c.figureBg,
+          tag('section', 'font-size:0;line-height:0', image) + ((caption || byline) ? tag('section', 'margin:' + k.heroMetaGap + 'px 0 0;font-size:0;line-height:0', caption + byline) : ''));
+      }
       case 'image': {
         fields(block, ['type', 'src', 'alt', 'caption'], 'image');
         const html = imageBlock(block.src, block.alt, block.caption);
@@ -325,15 +347,17 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
   }
   for (const block of input.blocks) article += renderBlock(block);
   const signature = input.signature ?? true;
+  const brandName = theme.brandName ?? '鲸选AI';
+  const brandSlogan = theme.brandSlogan ?? '挖掘 PMF & TIP · 每个人的 AI 顾问';
   if (signature !== false) {
     if (typeof signature === 'string') {
       webUrl(signature, 'signature', true);
-      article += imageBlock(signature, '鲸选AI：挖掘 PMF & TIP，每个人的 AI 顾问');
+      article += imageBlock(signature, brandName + '：' + brandSlogan.replace(' · ', '，'));
     } else if (signature === true) {
-      article += tag('section', 'margin:' + s.footer + 'px 0 0;padding:20px 0 0;border-top:1px solid ' + c.line, tag('p', 'margin:0;color:' + theme.primary + ';font-size:17px;font-weight:700;line-height:1.6', leaf('鲸选AI')) + tag('p', 'margin:4px 0 0;color:' + c.muted + ';font-size:12px;line-height:1.65', leaf('挖掘 PMF & TIP · 每个人的 AI 顾问')));
+      article += tag('section', 'margin:' + s.footer + 'px 0 0;padding:20px 0 0;border-top:1px solid ' + c.line, tag('p', 'margin:0;color:' + theme.primary + ';font-size:17px;font-weight:700;line-height:1.6', leaf(brandName)) + tag('p', 'margin:4px 0 0;color:' + c.muted + ';font-size:12px;line-height:1.65', leaf(brandSlogan)));
     } else throw new Error('signature 仅支持 boolean 或 HTTPS 图片地址');
-    plain.push('鲸选AI\n挖掘 PMF & TIP · 每个人的 AI 顾问');
+    plain.push(brandName + '\n' + brandSlogan);
   }
   const html = tag('section', 'margin:0;padding:0;max-width:100%;background-color:' + c.white + ';font-family:' + tokens.font + ';font-size:16px;line-height:' + theme.lineHeight + ';color:' + theme.text + ';overflow-wrap:anywhere', article);
-  return { html, text: plain.join('\n\n'), prompts, theme: theme.name, title: title || '鲸选AI · 排版预览', report: { theme: themeId, profile, textGradient: gradientMode, blocks: input.blocks.length, quotes: quoteCount, prompts: prompts.length, localExportChecksPassed: true, wechatVerified: false, blockers: [...new Set(blockers)], warnings: [...new Set(warnings)], note: '结构校验与浏览器预览不能替代公众号粘贴、保存和手机预览实测。' } };
+  return { html, text: plain.join('\n\n'), prompts, theme: theme.name, title: title || brandName + ' · 排版预览', report: { theme: themeId, profile, textGradient: gradientMode, blocks: input.blocks.length, quotes: quoteCount, prompts: prompts.length, localExportChecksPassed: true, wechatVerified: false, blockers: [...new Set(blockers)], warnings: [...new Set(warnings)], note: '结构校验与浏览器预览不能替代公众号粘贴、保存和手机预览实测。' } };
 }

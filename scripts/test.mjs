@@ -203,11 +203,13 @@ check('Pro blue uses supplied badge images and genuine text headings', () => {
   const result = renderArticle(base([{type:'heading',level:2,text:'01 开始'},{type:'heading',level:2,text:'接着'}],{theme:'pro-blue'}));
   assert.equal(result.text,'01 开始\n\n2 接着'); assert.ok(!result.html.includes('radial-gradient')); assert.ok(result.html.includes('font-style:italic')); assert.equal(result.html.match(/<img /g).length,2);
 });
-check('Pro badge order follows actual numbers without wrapping at four', () => {
+check('Pro badge order follows actual numbers; a missing number falls back to text', () => {
   const result = renderArticle(base([1,2,3,4].map((number)=>({type:'heading',level:2,text:number+' 章节'})),{theme:'pro-blue'}));
   const sources = [...result.html.matchAll(/<img src="([^"]+)"/g)].map((match)=>match[1].replaceAll('\\','/'));
-  assert.deepEqual(sources.map((source)=>source.split('/').at(-1)),['1.jpg','2.jpg','3.jpg']);
-  assert.equal(result.report.blockers.length,1); assert.ok(result.report.warnings.some((warning)=>warning.includes('第4节'))); assert.ok(result.text.endsWith('4 章节'));
+  assert.deepEqual(sources.map((source)=>source.split('/').at(-1)),['1.jpg','2.jpg','3.jpg','4.jpg']);
+  assert.equal(result.report.blockers.length,1); assert.ok(!result.report.warnings.some((warning)=>warning.includes('第4节'))); assert.ok(result.text.endsWith('4 章节'));
+  const missing = renderArticle(base([{type:'heading',level:2,text:'9 章节'}],{theme:'pro-blue'}));
+  assert.ok(missing.report.warnings.some((warning)=>warning.includes('第9节'))); assert.equal(missing.html.match(/<img /g),null);
   const reverse = renderArticle(base([3,1,2].map((number)=>({type:'heading',level:2,text:number+' 章节'})),{theme:'pro-blue'}));
   assert.deepEqual([...reverse.html.matchAll(/<img src="([^"]+)"/g)].map((match)=>match[1].replaceAll('\\','/').split('/').at(-1)),['3.jpg','1.jpg','2.jpg']);
 });
@@ -251,5 +253,31 @@ check('Preview inlines local images so WeChat paste keeps them', () => {
   // 不传 outDir 时保持原样（发布链路已传 outDir，这里只验证不炸）
   assert.ok(wrapPreview({ title: 'T', html, text: 'x', report: { blockers: [], warnings: [] }, theme: 'agi-green', prompts: [] }).includes('src="media/image-1.jpg"'));
   fs.rmSync(dir, { recursive: true, force: true });
+});
+check('Hero card: grey box, full-width image, caption left, byline right', () => {
+  const blocks = [{ type: 'hero', src: 'https://example.com/a.jpg', alt: '北汽蓝谷总部', caption: '北汽蓝谷的 K 型分化难题', author: '文涛', editor: '杨晓鹤' }, paragraph];
+  const result = renderArticle(base(blocks, { theme: 'pro-blue' }));
+  assert.ok(result.html.includes('padding:16px;background-color:#f1f3f5'));
+  assert.ok(result.html.includes('width:100%;max-width:100%;height:auto;border:0;border-radius:4px'));
+  assert.ok(result.html.includes('width:58%') && result.html.includes('width:42%'));
+  assert.ok(result.html.includes('作者 | 文涛<br>编辑：杨晓鹤'));
+  assert.ok(result.html.includes('text-align:right'));
+  assert.ok(result.html.includes('margin:0 0 28px;padding:16px'));
+  assert.ok(!result.report.blockers.some((item) => item.includes('头图')));
+  assert.ok(result.text.startsWith('[头图：北汽蓝谷总部]\n北汽蓝谷的 K 型分化难题\n作者 | 文涛\n编辑：杨晓鹤'));
+  // 无渐变，兼容版应与设计版完全一致
+  assert.equal(renderArticle(base(blocks, { theme: 'pro-blue' }), undefined, 'compatible').html, result.html);
+});
+check('Hero flags local image, warns on empty meta, rejects unknown fields', () => {
+  const result = renderArticle(base([{ type: 'hero', src: 'img/a.jpg', alt: '头图', caption: '图注' }]));
+  assert.ok(result.report.blockers.some((item) => item.includes('头图为本地图片')));
+  assert.ok(!result.report.warnings.some((item) => item.includes('留一行空白')));
+  assert.ok(renderArticle(base([{ type: 'hero', src: 'img/a.jpg', alt: '头图' }])).report.warnings.some((item) => item.includes('留一行空白')));
+  assert.ok(renderArticle(base([{ type: 'hero', src: 'https://x.com/a.jpg', alt: '图', author: '文涛' }])).html.includes('width:100%;vertical-align:top'));
+  for (const bad of [
+    base([{ type: 'hero', src: 'https://x.com/a.jpg' }]),
+    base([{ type: 'hero', src: 'https://x.com/a.jpg', alt: '图', byline: '文涛' }]),
+    base([{ type: 'hero', src: 'http://x.com/a.jpg', alt: '图' }])
+  ]) assert.throws(() => renderArticle(bad));
 });
 console.log('ALL ' + tests + ' TESTS PASSED');
