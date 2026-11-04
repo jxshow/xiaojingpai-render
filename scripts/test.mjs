@@ -50,11 +50,12 @@ check('AGI green puts an italic dotted number left of the title column with its 
   // 编号：斜体 700、48px、带点，位于标题列左侧（flex，不用 float）；nowrap 防止句点在微信回退字体下折行成孤点
   const numberStyle = 'font-style:italic;font-weight:700;font-size:48px;line-height:1;letter-spacing:0;white-space:nowrap;color:#2ea250';
   assert.equal(result.html.split(numberStyle).length - 1, 2);
-  assert.ok(result.html.includes('&gt;01.&lt;') || result.html.includes('>01.</span>'));
+  assert.ok(result.html.includes('>01.</em>'));
   assert.ok(result.html.includes('display:flex;align-items:flex-start'));
   assert.ok(!result.html.includes('float:'));
   assert.ok(result.html.includes('width:94px;padding-right:10px'));
-  assert.ok(/<span style="[^"]*font-style:italic[^"]*" leaf="">0\d\.<\/span>/.test(result.html), '编号文字层应自带 font-style:italic');
+  assert.ok(/<em style="[^"]*font-style:italic[^"]*">0\d\.<\/em>/.test(result.html), '编号文字层应为自带 font-style:italic 的 <em> 语义标签');
+  assert.ok(!/<span style="[^"]*" leaf="">0\d\./.test(result.html), '编号文字不能再用 <span leaf> 承载，否则微信手机端丢斜体');
   // 英文标签在标题下方，13px 斜体灰
   assert.ok(result.html.includes('font-size:13px;color:#a1a1aa;font-weight:500;letter-spacing:0px'));
   // 标题收尾横线：每个 H2 一条，1px 浅灰、不透明度 0.76，只覆盖标题列（在编号右侧的列内）

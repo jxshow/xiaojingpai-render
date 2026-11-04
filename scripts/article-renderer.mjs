@@ -178,10 +178,13 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           // 横排编号版式：左侧斜体大编号（带点），右列标题/英文标签/收尾横线；
           // 横线只覆盖标题列，不延伸到编号下方（参考雷一言公众号版式，flex 实现，不用 float）
           const dot = /^\d+$/.test(numberText) ? '.' : '';
-          // 斜体/字重/字号/颜色必须落在承载文字的那层 span 上，不能只给外层容器：
-          // 微信手机端粘贴时会给内层 <span leaf>套自己的默认样式并覆盖继承值，
-          // 外层的 font-style:italic 会被吃掉（2026-10-10 用户手机端实测发现）。
-          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:' + k.h2NumberGap + 'px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;white-space:nowrap;color:' + theme.primary + ';text-align:left', leaf(numberText + dot, 'font-family:inherit;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary));
+          // 斜体（2026-11-04）：微信手机端会吃掉 <span leaf> 上的 font-style。2026-10-10 起
+          // italic/字重/字号/颜色已全部写进内层 <span leaf>，但用户 11-04 手机截图仍是正体，
+          // 说明微信重写的是 leaf 节点本身，光往 leaf 里加样式没用。
+          // 改用 <em> 语义标签承载编号文字：公众号编辑器自带斜体按钮，粘贴时会把 em 解析成
+          // 内部斜体标记，保存草稿后由微信自己输出斜体样式，绕开粘贴过滤器对 font-style 的清洗。
+          // em 与外层 span 都保留 inline font-style:italic 作为冗余（同一属性，不会双重倾斜）。
+          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:' + k.h2NumberGap + 'px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;white-space:nowrap;color:' + theme.primary + ';text-align:left', tag('em', 'font-family:inherit;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary, escapeHtml(numberText + dot)));
           const title = tag('h2', 'margin:0;padding-top:6px;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
           const label = block.label ? tag('p', 'margin:' + k.h2LabelGap + 'px 0 0;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
           // 收尾横线：1px 浅灰，仅在标题列内通栏（AGI绿专属，token 可关）
