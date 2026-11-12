@@ -230,6 +230,15 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         return tag('section', 'margin:24px 0;padding:16px;border:1px dashed ' + theme.border + ';border-radius:8px;text-align:center;background-color:' + theme.tint,
           (block.eyebrow ? tag('p', 'margin:0 0 8px;color:' + c.muted + ';font-size:12px;line-height:1.65', leaf(block.eyebrow)) : '') + tag('p', 'margin:0;font-size:16px;line-height:1.85', emphasis(block.text)));
       }
+      case 'intro': {
+        fields(block, ['type', 'label', 'text'], 'intro'); requiredText(block.text, 'intro.text');
+        const introLabel = block.label ?? '导语';
+        requiredText(introLabel, 'intro.label');
+        plain.push(introLabel + '\n' + block.text);
+        return tag('section', 'margin:26px 0 30px;text-align:center',
+          tag('p', 'margin:0 0 10px;color:' + theme.primary + ';font-size:14px;letter-spacing:1px;font-weight:700;line-height:1.6', leaf(introLabel)) +
+          tag('p', 'margin:0;font-size:16px;line-height:1.95', leaf(block.text)));
+      }
       case 'quote': case 'callout': {
         fields(block, ['type', 'paragraphs', ...(block.type === 'callout' ? ['title'] : [])], block.type);
         const part = paragraphs(block.paragraphs);

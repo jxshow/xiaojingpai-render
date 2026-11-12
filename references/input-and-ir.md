@@ -46,6 +46,7 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | cover | title必填；kicker,date,accent,subtitle,footer可省略 | 杂志式封面，accent为重点副句，footer为品牌条 |
 | toc | items:[{title,summary?}], title可省略 | 导读卡自然换行，不包含虚假跳转链接 |
 | summary | text必填, eyebrow可省略 | 杂志一句话导读；与prompt结构不同 |
+| intro | text必填, label可省略(默认「导语」) | 正文最前的导语区：居中主题色小标签 + 导语段；放在 blocks 首位 |
 
 runs 是 [{text, strong?, em?, mark?, underline?, href?}]；布尔样式缺省 false，href 仅 HTTPS/HTTP；纯文本段落可把整个内容作为一个 run。所有 text 自动 HTML 转义，绝不透传 raw HTML。普通换行显示为 br；代码/prompt 使用 pre-wrap 保留原始文本。
 
