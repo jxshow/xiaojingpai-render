@@ -336,6 +336,30 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         const html = imageBlock(block.src, block.alt, block.caption);
         plain.push('[图片：' + block.alt + ']' + (block.caption ? '\n' + block.caption : '')); return html;
       }
+      case 'gallery': {
+        // 横向滑动图组：同一组多张图左右滑查看（overflow-x + nowrap + inline-block）。
+        // 微信公众号编辑器保留 overflow-x:auto（135/秀米等横滑模板同款实现），
+        // 但手机端滑动是否顺滑需实测；iOS 加 -webkit-overflow-scrolling:touch 提供惯性滚动。
+        fields(block, ['type', 'images', 'caption', 'width'], 'gallery');
+        if (!Array.isArray(block.images) || block.images.length < 2) throw new Error('gallery.images 至少需要 2 张图');
+        const width = block.width === undefined ? 78 : block.width;
+        if (typeof width !== 'number' || width < 30 || width > 100) throw new Error('gallery.width 必须是 30-100 的数字（每张图占屏宽百分比）');
+        if (block.caption !== undefined) requiredText(block.caption, 'gallery.caption', true);
+        const items = block.images.map((item) => {
+          fields(item, ['src', 'alt'], 'gallery.image');
+          requiredText(item.alt, 'gallery.image.alt');
+          const { resolved, local } = resolveImg(item.src, 'gallery.image.src');
+          if (local) blockers.push('图组含本地图片，发布前请上传并替换 HTTPS 地址: ' + item.src);
+          return '<img src="' + escapeHtml(resolved) + '" alt="' + escapeHtml(item.alt) + '" style="display:inline-block;vertical-align:top;box-sizing:border-box;width:' + width + '%;max-width:' + width + '%;height:auto;margin:0 8px 0 0;border:0;border-radius:' + k.figureRadius + 'px;box-shadow:0 ' + k.figureShadowY + 'px ' + k.figureShadowBlur + 'px ' + k.figureShadowColor + '">';
+        });
+        const track = tag('section', 'display:inline-block;white-space:nowrap;font-size:0;line-height:0', items.join(''));
+        const scroller = tag('section', 'width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;white-space:nowrap;font-size:0;line-height:0', track);
+        const hint = tag('p', 'margin:0 0 6px;text-align:right;color:' + c.muted + ';font-size:' + z.caption + 'px;line-height:1.65', leaf('左右滑动查看 →'));
+        const note = block.caption ? tag('p', 'margin:' + s.sm + 'px 0 0;color:' + c.muted + ';font-size:' + z.caption + 'px;line-height:1.65;text-align:center', leaf(block.caption)) : '';
+        warnings.push('图组使用横向滑动（overflow-x:auto + nowrap），共 ' + block.images.length + ' 张；粘贴保存后请在手机端实测滑动是否生效。');
+        plain.push('[图组：' + block.images.map((item) => item.alt).join(' / ') + ']' + (block.caption ? '\n' + block.caption : ''));
+        return tag('section', 'margin:' + s.card + 'px 0;line-height:0', hint + scroller + note);
+      }
       case 'table': {
         fields(block, ['type', 'headers', 'rows'], 'table');
         if (!Array.isArray(block.headers) || !block.headers.length || !Array.isArray(block.rows) || !block.rows.length) throw new Error('table 需要非空 headers 和 rows');

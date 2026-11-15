@@ -281,4 +281,35 @@ check('Hero flags local image, warns on empty meta, rejects unknown fields', () 
     base([{ type: 'hero', src: 'http://x.com/a.jpg', alt: '图' }])
   ]) assert.throws(() => renderArticle(bad));
 });
+check('Gallery renders horizontal swipe track with hint and caption', () => {
+  const blocks = [{ type: 'gallery', images: [
+    { src: 'https://example.com/1.jpg', alt: '第一张' },
+    { src: 'https://example.com/2.jpg', alt: '第二张' },
+    { src: 'https://example.com/3.jpg', alt: '第三张' }
+  ], caption: '组图注' }];
+  const result = renderArticle(base(blocks, { theme: 'agi-green' }));
+  // 横滑三件套：overflow-x + 惯性滚动 + nowrap，图片 inline-block 定宽
+  assert.ok(result.html.includes('overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;white-space:nowrap'));
+  assert.equal(result.html.match(/display:inline-block;vertical-align:top;box-sizing:border-box;width:78%/g).length, 3);
+  assert.ok(result.html.includes('左右滑动查看 →'));
+  assert.ok(result.html.includes('>组图注</span>'));
+  assert.ok(result.html.includes('border-radius:10px'));
+  // 合规红线：不用 div/float/grid，本地图片要进 blockers
+  assert.ok(!result.html.includes('float:'));
+  assert.ok(!result.html.includes('display:grid'));
+  assert.ok(result.report.warnings.some((item) => item.includes('横向滑动')));
+  assert.ok(result.text.startsWith('[图组：第一张 / 第二张 / 第三张]\n组图注'));
+  // 自定义宽度
+  const custom = renderArticle(base([{ ...blocks[0], width: 60 }]));
+  assert.ok(custom.html.includes('width:60%'));
+  // 校验失败路径：少于 2 张、宽度越界、未知字段、data: 协议
+  for (const bad of [
+    [{ type: 'gallery', images: [{ src: 'https://e.com/1.jpg', alt: '一' }] }],
+    [{ type: 'gallery', width: 20, images: [{ src: 'https://e.com/1.jpg', alt: '一' }, { src: 'https://e.com/2.jpg', alt: '二' }] }],
+    [{ type: 'gallery', images: [{ src: 'https://e.com/1.jpg', alt: '一' }, { src: 'https://e.com/2.jpg', alt: '二', typo: 1 }] }],
+    [{ type: 'gallery', images: [{ src: 'data:image/png;base64,abc', alt: '一' }, { src: 'https://e.com/2.jpg', alt: '二' }] }]
+  ]) assert.throws(() => renderArticle(base(bad)));
+  const local = renderArticle(base([{ type: 'gallery', images: [{ src: 'a.png', alt: '一' }, { src: 'b.png', alt: '二' }] }]), () => 'media/a.png');
+  assert.equal(local.report.blockers.length, 2);
+});
 console.log('ALL ' + tests + ' TESTS PASSED');
