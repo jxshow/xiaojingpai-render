@@ -32,7 +32,7 @@ theme 支持 byte-green/agi-green/magazine-green/pro-blue，默认 byte-green；
 | type | 字段 | 行为 |
 | --- | --- | --- |
 | paragraph | runs | 一个段落 |
-| heading | level:2或3, text, badgeSrc可省略 | 标题；已有数号不重复加；badgeSrc仅用于Pro蓝H2的原图路径/已上传HTTPS地址，1/2/3缺省用内置原图 |
+| heading | level:2或3, text, badgeSrc可省略, numberSrc可省略, label可省略 | 标题；已有数号不重复加；badgeSrc仅用于Pro蓝H2的原图路径/已上传HTTPS地址，1/2/3缺省用内置原图；numberSrc仅用于AGI绿H2的斜体编号图（本地PNG或HTTPS，微信会吃掉 CSS 斜体故图片化，脚本 `xiaojingpai/scripts/make_number_images.py` 生成）；label仅用于AGI绿H2的英文标签 |
 | quote | paragraphs:字符串或runs数组的数组 | 同一引用容器内多个段落；允许中间空字符串保留空行，不另起外框 |
 | callout | title可省略, paragraphs | 说明卡，原文事实不补写 |
 | prompt | title可省略, text | 原始纯文本提示词；空格换行原样保留 |

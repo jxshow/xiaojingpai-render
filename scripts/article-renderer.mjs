@@ -146,9 +146,15 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         plain.push(part.text); return tag('p', paraStyle, part.html);
       }
       case 'heading': {
-        fields(block, ['type', 'level', 'text', 'badgeSrc', 'label'], 'heading'); requiredText(block.text, 'heading.text');
+        fields(block, ['type', 'level', 'text', 'badgeSrc', 'label', 'numberSrc'], 'heading'); requiredText(block.text, 'heading.text');
         if (block.badgeSrc !== undefined) { requiredText(block.badgeSrc, 'heading.badgeSrc'); if (!(pro && block.level === 2)) throw new Error('badgeSrc 仅用于Pro蓝二级标题'); }
         if (block.label !== undefined) { requiredText(block.label, 'heading.label'); if (!(editorial && block.level === 2)) throw new Error('label 仅用于AGI绿二级标题的英文标签'); }
+        if (block.numberSrc !== undefined) {
+          const src = requiredText(block.numberSrc, 'heading.numberSrc');
+          if (/^(?:data:|blob:|file:|javascript:)/i.test(src)) throw new Error('numberSrc 不支持 data/blob/file/javascript 协议');
+          if (!/^https:\/\//i.test(src) && !/\.(?:png|jpe?g|gif|webp)$/i.test(src)) throw new Error('numberSrc 本地图片需为 PNG/JPG/GIF/WebP');
+          if (!(editorial && block.level === 2)) throw new Error('numberSrc 仅用于AGI绿二级标题');
+        }
         if (![2, 3].includes(block.level)) throw new Error('heading.level 仅支持 2 或 3');
         const h2 = block.level === 2;
         let prefix = ''; let headingText = block.text; let plainHeading = block.text; let numberText = '';
@@ -184,7 +190,18 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           // 改用 <em> 语义标签承载编号文字：公众号编辑器自带斜体按钮，粘贴时会把 em 解析成
           // 内部斜体标记，保存草稿后由微信自己输出斜体样式，绕开粘贴过滤器对 font-style 的清洗。
           // em 与外层 span 都保留 inline font-style:italic 作为冗余（同一属性，不会双重倾斜）。
-          const number = tag('span', 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:' + k.h2NumberGap + 'px;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;white-space:nowrap;color:' + theme.primary + ';text-align:left', tag('em', 'font-family:inherit;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary, escapeHtml(numberText + dot)));
+          const numberBox = 'display:block;flex-shrink:0;box-sizing:border-box;width:' + k.h2NumberWidth + 'px;padding-right:' + k.h2NumberGap + 'px;margin:0;line-height:1;text-align:left';
+          // 图片化编号（2026-11-23）：微信手机端实测会吃掉 <em>/<span leaf> 上的 font-style:italic，
+          // 编号始终是正体。numberSrc 提供一张预渲染的斜体编号 PNG 时改用 <img>——图片微信不清洗，
+          // 100% 保留斜体。未提供的文章继续走原 em 方案，历史稿件不受影响。
+          let number;
+          if (block.numberSrc) {
+            const num = resolveImg(block.numberSrc, 'heading.numberSrc');
+            if (num.local) blockers.push('AGI绿标题编号为本地图片，发布前请上传并替换 HTTPS 地址: ' + block.numberSrc);
+            number = tag('span', numberBox, '<img src="' + escapeHtml(num.resolved) + '" alt="' + escapeHtml(numberText + dot) + '" style="display:block;max-width:100%;height:auto;border:0;vertical-align:top">');
+          } else {
+            number = tag('span', numberBox + ';font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;letter-spacing:0;white-space:nowrap;color:' + theme.primary, tag('em', 'font-family:inherit;font-style:' + k.h2NumberStyle + ';font-weight:' + k.h2NumberWeight + ';font-size:' + k.h2NumberSize + 'px;line-height:1;letter-spacing:0;color:' + theme.primary, escapeHtml(numberText + dot)));
+          }
           const title = tag('h2', 'margin:0;padding-top:6px;font-size:' + z.h2 + 'px;line-height:1.4;font-weight:800;color:' + c.heading + ';letter-spacing:0.5px;text-align:left', leaf(headingText));
           const label = block.label ? tag('p', 'margin:' + k.h2LabelGap + 'px 0 0;font-size:' + k.h2LabelSize + 'px;color:' + c.labelMuted + ';font-weight:500;letter-spacing:' + k.h2LabelTracking + 'px;line-height:1.65;font-style:' + k.h2LabelStyle, leaf(block.label)) : '';
           // 收尾横线：1px 浅灰，仅在标题列内通栏（AGI绿专属，token 可关）

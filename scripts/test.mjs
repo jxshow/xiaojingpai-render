@@ -48,7 +48,7 @@ check('AGI green puts an italic dotted number left of the title column with its 
     { type: 'heading', level: 3, text: '小标题' }
   ], { theme: 'agi-green' }));
   // 编号：斜体 700、48px、带点，位于标题列左侧（flex，不用 float）；nowrap 防止句点在微信回退字体下折行成孤点
-  const numberStyle = 'font-style:italic;font-weight:700;font-size:48px;line-height:1;letter-spacing:0;white-space:nowrap;color:#2ea250';
+  const numberStyle = 'font-style:italic;font-weight:700;font-size:48px;line-height:1;letter-spacing:0;color:#2ea250';
   assert.equal(result.html.split(numberStyle).length - 1, 2);
   assert.ok(result.html.includes('>01.</em>'));
   assert.ok(result.html.includes('display:flex;align-items:flex-start'));
@@ -76,6 +76,31 @@ check('AGI green puts an italic dotted number left of the title column with its 
   assert.ok(!magazine.html.includes('background-color:#d7d8d2'));
   assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'byte-green' })).html.includes('background-color:#d7d8d2'));
   assert.ok(!renderArticle(base([{ type: 'heading', level: 2, text: '章节' }], { theme: 'pro-blue' })).html.includes('background-color:#d7d8d2'));
+});
+check('AGI green heading number can be an image so WeChat keeps the italic', () => {
+  const blocks = [
+    { type: 'heading', level: 2, text: '一、准备', numberSrc: 'img/num-01.png' },
+    { type: 'heading', level: 2, text: '下一段', numberSrc: 'img/num-02.png' }
+  ];
+  const result = renderArticle(base(blocks, { theme: 'agi-green' }), () => 'media/num-01.png');
+  // 图片编号：img 标签、alt 保留编号文字、走 resolveImage，不再有 <em> 编号
+  assert.equal((result.html.match(/<img src="media\/num-01\.png" alt="一" style="display:block;max-width:100%/g) || []).length, 1);
+  assert.ok(!/<em[^>]*>0?\d?\.?<\/em>/.test(result.html));
+  assert.ok(result.html.includes('flex:1;min-width:0'), '标题列结构不能被破坏');
+  // 图片 alt 不影响纯文字输出，编号仍按文本保留
+  assert.equal(result.text, '一、准备\n\n02 下一段');
+  // 本地编号图要登记 blocker，提醒上传换 HTTPS
+  assert.ok(result.report.blockers.some((item) => item.includes('AGI绿标题编号为本地图片')));
+  // 未给 numberSrc 时继续走原 em 方案，历史稿件零影响（上面的既有测试已覆盖）
+  for (const bad of [
+    { ...blocks[0], numberSrc: 'data:image/png;base64,abc' },
+    { ...blocks[0], numberSrc: 'http://x.com/n.png' },
+    { ...blocks[0], numberSrc: 'img/n.svg' },
+    { type: 'heading', level: 3, text: '小节', numberSrc: 'img/n.png' },
+    { type: 'heading', level: 2, text: '章节', numberSrc: 'x' }
+  ]) assert.throws(() => renderArticle(base([bad], { theme: 'agi-green' })));
+  const remote = renderArticle(base([{ ...blocks[0], numberSrc: 'https://x.com/n.png' }], { theme: 'agi-green' }));
+  assert.ok(remote.html.includes('src="https://x.com/n.png"'));
 });
 check('Terminal auto-scrolls only when content is long enough', () => {
   const short = renderArticle(base([{ type: 'terminal', lines: ['复制链接', '↓', '保存文字稿'] }], { theme: 'agi-green' }));
