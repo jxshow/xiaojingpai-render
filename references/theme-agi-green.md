@@ -47,7 +47,7 @@ macOS 终端风引用框，适合步骤清单、提示词原文、命令流程�
 - 整框：1px #e3e4e8 边 + `0 12px 30px rgba(31,35,44,0.07)` 投影，白底直角（无圆角），与配图的 10px 圆角区分开。
 - 渐变图片框不做（用户明确砍掉），配图保持统一圆角+淡投影。
 
-H3黑粗字加2px绿底线；mark渐变字色、没有底线；普通strong保留黑色加粗；`underline` 给短关键词加2px绿底线（黑粗字，可叠加 strong，token `components.underlineWidth`/`underlineOffset`）。
+H3黑粗字加2px绿底线；mark默认深绿色、没有底线；普通strong保留黑色加粗；`underline` 给短关键词加2px绿底线（黑粗字，可叠加 strong，token `components.underlineWidth`/`underlineOffset`）。
 提示词改成浅绿虚线框，不保留紫色色号。不复制WaytoAGI标识、头像、原创声明及分页空白。
 
 ## 配方与Markdown映射

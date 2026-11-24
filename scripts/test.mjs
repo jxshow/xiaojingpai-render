@@ -126,7 +126,7 @@ check('Terminal box renders header dots, mono body and optional scroll', () => {
   assert.ok(result.html.includes('font-family:Consolas'));
   assert.ok(result.html.includes('rgba(46,162,80,0.62)'));
   // mark → 主题色 600；strong → 黑粗
-  assert.ok(result.html.includes('font-weight:600;color:#2ea250'));
+  assert.ok(result.html.includes('font-weight:600;color:#16794b'));
   assert.ok(result.html.includes('font-weight:700;color:#1d2129'));
   // 空行保留、不加 float/grid
   assert.ok(result.html.includes('<br>'));
@@ -180,9 +180,9 @@ check('Preview JSON cannot terminate its script', () => {
   const preview = wrapPreview(result);
   assert.ok(preview.includes('\\u003c/script>')); assert.ok(!preview.includes('</script><script>alert(1)'));
 });
-check('All four themes route to their own visual structure', () => {
+check('All five themes route to their own visual structure', () => {
   const blocks = [{ type: 'heading', level: 2, text: '章节' }, paragraph];
-  for (const theme of ['byte-green', 'agi-green', 'magazine-green', 'pro-blue']) {
+  for (const theme of ['byte-green', 'agi-green', 'magazine-green', 'pro-blue', 'business-gold']) {
     const result = renderArticle(base(blocks, { theme })); assert.equal(result.report.theme, theme); assert.ok(!/undefined|NaN/.test(result.html));
   }
   assert.equal(renderArticle(base(blocks, { theme: 'agi-purple' })).report.theme, 'agi-green');
@@ -191,9 +191,11 @@ check('Brand backgrounds use both exact gradient endpoints', () => {
   const result = renderArticle(base([{ type:'heading', level:2, text:'章节' }], { title:'品牌标题', showTitle:true }));
   assert.ok(result.html.includes('linear-gradient(90deg,#2ea250,#09fc3c)')); assert.ok(result.html.includes('linear-gradient(135deg,#2ea250,#09fc3c)'));
 });
-check('Body emphasis is gradient text, never the H3 underline', () => {
+check('Green emphasis uses solid ink by default and allows an explicit gradient', () => {
   const result = renderArticle(base([{ type:'paragraph', runs:[{text:'重点文字',mark:true}] }]));
-  assert.ok(result.html.includes('color:#2ea250')); assert.ok(result.html.includes('color:#09fc3c')); assert.ok(!/border-bottom|transparent|text-fill/.test(result.html));
+  assert.ok(result.html.includes('color:#16794b')); assert.ok(!/border-bottom|transparent|text-fill/.test(result.html));
+  const legacy = renderArticle(base([{ type:'paragraph', runs:[{text:'重点文字',mark:true}] }], {textGradient:'steps'}));
+  assert.ok(legacy.html.includes('color:#09fc3c'));
   assert.equal(result.text,'重点文字');
 });
 check('Underline emphasis draws a brand rule and composes with bold', () => {
@@ -227,7 +229,7 @@ check('Magazine summary and prompt are different structures', () => {
 });
 check('Pro blue uses supplied badge images and genuine text headings', () => {
   const result = renderArticle(base([{type:'heading',level:2,text:'01 开始'},{type:'heading',level:2,text:'接着'}],{theme:'pro-blue'}));
-  assert.equal(result.text,'01 开始\n\n2 接着'); assert.ok(!result.html.includes('radial-gradient')); assert.ok(result.html.includes('font-style:italic')); assert.equal(result.html.match(/<img /g).length,2);
+  assert.equal(result.text,'01 开始\n\n2 接着'); assert.ok(!result.html.includes('radial-gradient')); assert.ok(!result.html.includes('font-style:italic')); assert.equal(result.html.match(/<img /g).length,2);
 });
 check('Pro badge order follows actual numbers; a missing number falls back to text', () => {
   const result = renderArticle(base([1,2,3,4].map((number)=>({type:'heading',level:2,text:number+' 章节'})),{theme:'pro-blue'}));
@@ -246,6 +248,38 @@ check('Pro uploaded badge sources are supported without claiming publication', (
   assert.ok(safe.html.includes('<img')); assert.ok(!safe.html.includes('gradient('));
   for (const badgeSrc of ['',null,42,'javascript:alert(1)','data:image/png;base64,abc','http://example.com/badge.jpg']) assert.throws(()=>renderArticle(base([{type:'heading',level:2,text:'开始',badgeSrc}],{theme:'pro-blue'})));
   assert.throws(()=>renderArticle(base([{type:'heading',level:3,text:'小标题',badgeSrc:'local.jpg'}],{theme:'pro-blue'})));
+});
+check('Business gold preserves cover copy as plain text and accepts the former theme ID', () => {
+  const blocks = [
+    {type:'cover', kicker:'栏目', title:'样稿', accent:'副题', subtitle:'导语', date:'本期', footer:'题记'},
+    {type:'heading', level:2, text:'02 原文标题'},
+    {type:'table', headers:['项目','次数'], rows:[['甲','12 次'],['乙','8 次']]},
+    {type:'callout', title:'口径', paragraphs:['同一统计期。']}
+  ];
+  const input = base(blocks, {theme:'business-gold'});
+  const design = renderArticle(input);
+  const legacy = renderArticle({...input, theme:'feifan-brief'});
+  assert.equal(legacy.html, design.html);
+  assert.equal(legacy.report.theme, 'business-gold');
+  const safe = renderArticle(input, undefined, 'compatible');
+  assert.equal(design.text, safe.text);
+  for (const word of ['栏目','样稿','副题','导语','本期','题记','02 原文标题','12 次','同一统计期。']) {
+    assert.ok(design.html.includes(word));
+    assert.ok(safe.html.includes(word));
+  }
+  assert.doesNotMatch(design.html, /Songti|text-align:center|border-left:/);
+  assert.match(design.html, /<td style="[^"]*text-align:right[^"]*"><span[^>]*>12 次/);
+  assert.doesNotMatch(safe.html, /linear-gradient|display:flex|background-clip/);
+  const bare = renderArticle(base([{type:'heading',level:2,text:'原文标题'}], {theme:'feifan-brief'}));
+  assert.equal(bare.text, '原文标题');
+});
+check('Business gold uses a large data point only for a short numeric summary', () => {
+  const sample = (text) => base([{type:'summary', eyebrow:'午后贡献的增量', text}], {theme:'business-gold'});
+  const number = renderArticle(sample('75%'));
+  assert.equal(number.text, '午后贡献的增量\n75%');
+  assert.match(number.html, /font-size:40px/);
+  assert.doesNotMatch(renderArticle(sample('新客更多集中在午后。')).html, /font-size:40px/);
+  assert.equal(number.html, renderArticle(sample('75%'), undefined, 'compatible').html);
 });
 check('Reject malformed new components and gradient modes', () => {
   assert.throws(()=>renderArticle(base([paragraph],{textGradient:'fake'})));

@@ -1,7 +1,7 @@
 {
   "theme": "byte-green",
   "profile": "design",
-  "textGradient": "steps",
+  "textGradient": "solid",
   "blocks": 14,
   "quotes": 1,
   "prompts": 1,

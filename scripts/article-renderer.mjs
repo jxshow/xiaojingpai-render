@@ -62,21 +62,25 @@ export function gradientText(text, start, end, mode, extraStyle = '') {
   }).join(''));
 }
 
+const formerThemes = new Map([['agi-purple', 'agi-green'], ['feifan-brief', 'business-gold']]);
+
 export function renderArticle(input, resolveImage = (src) => src, profile = 'design') {
   fields(input, ['theme', 'title', 'showTitle', 'signature', 'blocks', 'textGradient'], 'article');
-  const themeId = input.theme === 'agi-purple' ? 'agi-green' : (input.theme ?? 'byte-green');
+  const themeId = formerThemes.get(input.theme) ?? input.theme ?? 'byte-green';
   if (typeof themeId !== 'string' || !Object.hasOwn(tokens.themes, themeId)) throw new Error('未知主题: ' + themeId);
   const theme = tokens.themes[themeId];
   const byte = theme.layout === 'byte';
   const pro = theme.layout === 'pro';
   const editorial = theme.layout === 'editorial';
+  const brief = theme.layout === 'business';
+  const ink = theme.ink ?? theme.primary;
   const safe = profile === 'compatible';
-  const requestedGradient = input.textGradient ?? 'steps';
+  const requestedGradient = input.textGradient ?? 'solid';
   if (!['steps', 'continuous', 'solid'].includes(requestedGradient)) throw new Error('textGradient 仅支持 steps/continuous/solid');
-  const gradientMode = safe || pro ? 'solid' : requestedGradient;
+  const gradientMode = safe || pro || brief ? 'solid' : requestedGradient;
   const gradient = (angle = '90deg') => 'linear-gradient(' + angle + ',' + theme.primary + ',' + theme.end + ')';
   const gradientBackground = (angle = '90deg') => 'background-color:' + theme.primary + (safe ? '' : ';background-image:' + gradient(angle));
-  const emphasis = (text, extra = '') => gradientText(text, theme.primary, theme.end, gradientMode, 'font-weight:700;' + extra);
+  const emphasis = (text, extra = '') => gradientText(text, gradientMode === 'solid' ? ink : theme.primary, theme.end, gradientMode, 'font-weight:700;' + extra);
   const title = input.title === undefined ? '' : requiredText(input.title, 'title', true);
   const showTitle = boolean(input.showTitle, 'showTitle', false);
   if (showTitle && !title.trim()) throw new Error('showTitle:true 需要非空 title');
@@ -107,15 +111,15 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
       if (boolean(run.em, 'em', false)) styles['font-style'] = 'italic';
       if (boolean(run.underline, 'underline', false)) { styles['border-bottom'] = k.underlineWidth + ' solid ' + theme.primary; styles['padding-bottom'] = k.underlineOffset + 'px'; }
       let result = mark ? emphasis(run.text, style(styles)) : leaf(run.text, style(styles));
-      if (run.href !== undefined) result = tag('a', 'color:' + theme.primary + ';text-decoration:underline', result, ' href="' + escapeHtml(webUrl(run.href, 'href')) + '"');
+      if (run.href !== undefined) result = tag('a', 'color:' + ink + ';text-decoration:underline', result, ' href="' + escapeHtml(webUrl(run.href, 'href')) + '"');
       return result;
     }).join('');
     return { html, text };
   };
-  const paragraphs = (items) => {
+  const paragraphs = (items, typography = base) => {
     if (!Array.isArray(items) || !items.length) throw new Error('paragraphs 必须为非空数组');
     const parts = items.map(rich);
-    return { html: parts.map((part, index) => tag('p', 'margin:' + (index ? s.sm : 0) + 'px 0 0;' + base, part.html || '<br>')).join(''), text: parts.map((part) => part.text).join('\n\n') };
+    return { html: parts.map((part, index) => tag('p', 'margin:' + (index ? s.sm : 0) + 'px 0 0;' + typography, part.html || '<br>')).join(''), text: parts.map((part) => part.text).join('\n\n') };
   };
   // 图片地址解析：HTTPS 直用，本地路径交给 resolveImage（仅预览），其余协议拒绝
   const resolveImg = (src, label) => {
@@ -163,8 +167,8 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
           const cnNumber = numbered ? null : block.text.match(/^\s*((?:[一二三四五六七八九十百]+[、.．])|(?:第[一二三四五六七八九十百\d]+[章节部分]))/);
           const existing = numbered || cnNumber;
           sectionNumber = numbered ? Number(numbered[1]) : sectionNumber + 1;
-          if (!byte && !existing) { prefix = pro ? String(sectionNumber) : String(sectionNumber).padStart(2, '0'); plainHeading = prefix + ' ' + block.text; }
-          if (!byte && numbered) { prefix = numbered[0]; headingText = block.text.slice(numbered[0].length); }
+          if (!byte && !brief && !existing) { prefix = pro ? String(sectionNumber) : String(sectionNumber).padStart(2, '0'); plainHeading = prefix + ' ' + block.text; }
+          if (!byte && !brief && numbered) { prefix = numbered[0]; headingText = block.text.slice(numbered[0].length); }
           if (editorial) {
             numberText = cnNumber ? cnNumber[1].replace(/[、.．]$/, '') : String(sectionNumber).padStart(2, '0');
             if (cnNumber) headingText = block.text.slice(cnNumber[0].length);
@@ -174,11 +178,15 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         if (editorial && h2 && block.label) plain.push(block.label);
         const headingStyle = style({ margin: (h2 ? s.section : s.block) + 'px 0 ' + (h2 ? s.paragraph : s.sm) + 'px', 'font-size': (h2 ? z.h2 : z.h3) + 'px', 'line-height': 1.6, 'font-weight': 700, color: c.heading, 'text-align': (byte && h2) || pro ? 'center' : 'left' });
         let content = leaf(headingText);
-        if (byte && h2) content = leaf(block.text, 'display:inline-block;max-width:100%;box-sizing:border-box;padding:' + s.xs + 'px ' + s.card + 'px;' + gradientBackground('135deg') + ';color:' + c.white + ';border-radius:6px');
+        if (brief) {
+          const accent = h2 ? ';border-top:1px solid ' + theme.rule + ';padding-top:12px' : '';
+          return tag('h' + block.level, headingStyle + accent, content);
+        }
+        if (byte && h2) content = leaf(block.text, 'display:inline-block;max-width:100%;box-sizing:border-box;padding:' + s.xs + 'px ' + s.card + 'px;' + gradientBackground('135deg') + ';color:' + c.black + ';border-radius:6px');
         if (!pro && !h2) content = leaf(block.text, 'border-bottom:2px solid ' + theme.primary + ';padding-bottom:4px');
         if (pro) {
           const badge = renderProBadge({ prefix, number: sectionNumber, src: block.badgeSrc, image: imageBlock, tag, leaf, theme, components: k, space: s, warn: (message) => warnings.push(message) });
-          return tag('section', 'margin:' + s.section + 'px 0 ' + s.card + 'px', badge + tag('h' + block.level, headingStyle + ';margin:0;color:' + theme.primary + ';font-style:italic', leaf(headingText)));
+          return tag('section', 'margin:' + s.section + 'px 0 ' + s.card + 'px', badge + tag('h' + block.level, headingStyle + ';margin:0;color:' + theme.primary, leaf(headingText)));
         }
         if (editorial && h2) {
           // 横排编号版式：左侧斜体大编号（带点），右列标题/英文标签/收尾横线；
@@ -217,6 +225,12 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         for (const key of ['title']) requiredText(block[key], 'cover.' + key);
         for (const key of ['kicker', 'date', 'accent', 'subtitle', 'footer']) if (block[key] !== undefined) requiredText(block[key], 'cover.' + key);
         const meta = [block.kicker, block.date].filter(Boolean).join(' · ');
+        if (brief) {
+          // Older drafts may carry editorial copy in a cover; keep it in the reading flow.
+          const lines = [meta, block.title, block.accent, block.subtitle, block.footer].filter(Boolean);
+          plain.push(lines.join('\n'));
+          return lines.map(line => tag('p', paraStyle, leaf(line))).join('');
+        }
         const top = meta ? tag('p', 'margin:0 0 24px;color:' + theme.primary + ';font-size:12px;line-height:1.65;font-weight:700;letter-spacing:1px', leaf(meta)) : '';
         const titleHtml = tag('p', 'margin:0;color:' + c.heading + ';font-size:24px;line-height:1.5;font-weight:700;text-wrap:balance', leaf(block.title));
         const accent = block.accent ? tag('p', 'margin:4px 0 0;font-size:24px;line-height:1.5;text-wrap:balance', emphasis(block.accent)) : '';
@@ -244,6 +258,12 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         fields(block, ['type', 'eyebrow', 'text'], 'summary'); requiredText(block.text, 'summary.text');
         if (block.eyebrow !== undefined) requiredText(block.eyebrow, 'summary.eyebrow');
         plain.push([block.eyebrow, block.text].filter(Boolean).join('\n'));
+        if (brief) {
+          const numeric = /^[+−-]?[\d,.]+\s*(?:%|％|倍|万|亿|元|杯|分钟)?$/u.test(block.text.trim()) && block.text.trim().length <= 12;
+          const label = block.eyebrow ? tag('p', 'margin:0 0 4px;color:' + c.white + ';font-size:14px;line-height:1.6', leaf(block.eyebrow)) : '';
+          const valueStyle = 'margin:0;color:' + theme.highlight + ';font-size:' + (numeric ? 40 : 20) + 'px;line-height:1.35;font-weight:700;font-variant-numeric:tabular-nums';
+          return tag('section', 'margin:20px 0 24px;padding:16px 20px;background-color:' + theme.panel, label + tag('p', valueStyle, leaf(block.text)));
+        }
         return tag('section', 'margin:24px 0;padding:16px;border:1px dashed ' + theme.border + ';border-radius:8px;text-align:center;background-color:' + theme.tint,
           (block.eyebrow ? tag('p', 'margin:0 0 8px;color:' + c.muted + ';font-size:12px;line-height:1.65', leaf(block.eyebrow)) : '') + tag('p', 'margin:0;font-size:16px;line-height:1.85', emphasis(block.text)));
       }
@@ -258,12 +278,17 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
       }
       case 'quote': case 'callout': {
         fields(block, ['type', 'paragraphs', ...(block.type === 'callout' ? ['title'] : [])], block.type);
-        const part = paragraphs(block.paragraphs);
+        const noteStyle = brief && block.type === 'callout' ? 'font-size:14px;line-height:1.8;color:' + theme.text : base;
+        const part = paragraphs(block.paragraphs, noteStyle);
         if (!part.text.trim()) throw new Error('引用或说明卡不能全空');
         const isQuote = block.type === 'quote'; if (isQuote) quoteCount++;
         let lead = '';
         if (block.title !== undefined) { requiredText(block.title, 'callout.title'); lead = tag('p', 'margin:0 0 8px;font-weight:700;color:' + c.heading, leaf(block.title)); }
         plain.push((block.title ? block.title + '\n' : '') + part.text);
+        if (brief) {
+          const surface = isQuote ? 'padding:12px 16px;background-color:' + theme.tint : 'padding:10px 0 0;border-top:1px dotted ' + theme.rule;
+          return tag('section', 'margin:20px 0;' + surface, lead + part.html);
+        }
         const border = byte && isQuote ? 'border-left:3px solid ' + theme.primary : 'border:1px solid ' + theme.border;
         return tag('section', 'margin:' + s.card + 'px 0;padding:' + s.card + 'px;background-color:' + theme.tint + ';border-radius:' + (byte ? 4 : 10) + 'px;' + border + ';' + base, lead + part.html);
       }
@@ -300,7 +325,7 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
             text += run.text;
             const styles = {};
             if (boolean(run.strong, 'terminal.run.strong', false)) { styles['font-weight'] = '700'; styles.color = c.heading; }
-            if (boolean(run.mark, 'terminal.run.mark', false)) { styles['font-weight'] = '600'; styles.color = theme.primary; }
+            if (boolean(run.mark, 'terminal.run.mark', false)) { styles['font-weight'] = '600'; styles.color = ink; }
             return leaf(run.text, style(styles));
           }).join('');
           return { html, text };
@@ -383,7 +408,14 @@ export function renderArticle(input, resolveImage = (src) => src, profile = 'des
         block.headers.forEach((cell) => requiredText(cell, 'table.header'));
         block.rows.forEach((row) => { if (!Array.isArray(row) || row.length !== block.headers.length) throw new Error('表格列数不一致'); row.forEach((cell) => requiredText(cell, 'table.cell', true)); });
         if (block.headers.length > 3) warnings.push('宽表格请在手机复核，建议转为逐项说明');
-        const rowHtml = (row, header) => tag('tr', '', row.map((cell) => tag(header ? 'th' : 'td', 'padding:8px;border:1px solid ' + c.line + ';text-align:left;vertical-align:top;font-size:14px;line-height:1.7;' + (header ? 'background-color:' + theme.tint : ''), leaf(cell))).join(''));
+        const numericColumns = brief && block.headers.map((_, index) => block.rows.every(row =>
+          /^[+−-]?[\d,.]+(?:\s*(?:%|％|人|次|件|个|天|小时|分钟|秒|元|万|亿|倍))?$/u.test(row[index].trim())));
+        const rowHtml = (row, header) => tag('tr', '', row.map((cell, index) => {
+          const cellStyle = brief
+            ? 'padding:9px 8px;border-bottom:1px solid ' + theme.border + ';text-align:' + (numericColumns[index] ? 'right;font-variant-numeric:tabular-nums' : 'left') + ';vertical-align:top;font-size:14px;line-height:1.7' + (header ? ';background-color:' + theme.panel + ';color:' + c.white : '')
+            : 'padding:8px;border:1px solid ' + c.line + ';text-align:left;vertical-align:top;font-size:14px;line-height:1.7;' + (header ? 'background-color:' + theme.tint : '');
+          return tag(header ? 'th' : 'td', cellStyle, leaf(cell));
+        }).join(''));
         plain.push([block.headers, ...block.rows].map((row) => row.join(' | ')).join('\n'));
         return tag('table', 'border-collapse:collapse;table-layout:fixed;width:100%;margin:16px 0;overflow-wrap:anywhere', tag('thead', '', rowHtml(block.headers, true)) + tag('tbody', '', block.rows.map((row) => rowHtml(row, false)).join('')));
       }

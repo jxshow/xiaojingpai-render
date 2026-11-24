@@ -2,6 +2,14 @@
 
 为鲸选AI定制的独立公众号排版 Skill。保留原文内容，以结构化文章输入生成品牌版 HTML、纯色兼容版和可复制预览。
 
+## 五套主题对照
+
+同一篇模拟门店周报，分别用商务金、字节绿、AGI 绿、杂志绿和 Pro 蓝排版。
+
+![小鲸排五套公众号排版对照](assets/theme-previews/theme-comparison.png)
+
+下载 [交互对照页](https://raw.githubusercontent.com/jxshow/xiaojingpai-render/main/assets/theme-previews/theme-comparison.html) 后用浏览器打开，点主题可查看完整样稿。
+
 ## 模板
 
 | 主题 | ID | 特点 |
@@ -9,11 +17,12 @@
 | 字节渐变绿 | `byte-green` | 品牌渐变 `#2ea250 → #09fc3c`、清晰标题层级 |
 | AGI绿 | `agi-green` | 轻量阅读、绿色重点与连续引用；旧 `agi-purple` ID 兼容映射 |
 | 鲸选杂志绿 | `magazine-green` | 杂志封面、目录卡片、简化中文章节 |
-| 鲸选Pro蓝 | `pro-blue` | 蓝色斜体章节、黑色加粗重点、独立原图数字徽章 |
+| 鲸选商务金 | `business-gold` | 导语直入、炭黑底金色读数、深色表头、页末口径 |
+| 鲸选Pro蓝 | `pro-blue` | 蓝色正体章节、黑色加粗重点、独立原图数字徽章 |
 
 各主题示例在 [assets/examples](assets/examples)，下载仓库后可直接用浏览器打开 [assets/theme-previews](assets/theme-previews) 中对应的 `preview.html`。
 
-Pro蓝的 [1、2、3徽章](assets/pro-blue/badges) 使用用户提供的原始 JPG，不裁切、不改色、不重画。生成文章时自动复制所需图片到输出目录；第4节起没有对应原图时显示普通蓝色数字并提醒，不循环复用前三张。
+Pro蓝内置 [1–6 号徽章](assets/pro-blue/badges)。渲染时自动复制所需图片到输出目录。编号缺少对应素材时，显示普通蓝色数字并提醒。
 
 ## 使用
 
@@ -25,6 +34,7 @@ Pro蓝的 [1、2、3徽章](assets/pro-blue/badges) 使用用户提供的原始 
 
 ```sh
 node scripts/render_article.mjs assets/examples/pro-blue.json --out output/pro-blue
+node scripts/render_article.mjs assets/examples/business-gold.json --out output/business-gold
 node scripts/test.mjs
 ```
 
